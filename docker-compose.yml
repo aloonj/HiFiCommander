@@ -1,0 +1,10 @@
+services:
+  hificommander:
+    build: .
+    # SSDP discovery relies on multicast + binding to a fixed UDP port (1900);
+    # Docker's default bridge networking NATs that away, so this container
+    # needs to share the host's network stack directly.
+    network_mode: host
+    volumes:
+      - ./server/data:/app/server/data
+    restart: unless-stopped

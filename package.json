@@ -1,0 +1,12 @@
+{
+  "name": "nodedlna",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n server,web -c blue,magenta \"npm run dev --prefix server\" \"npm run dev --prefix web\"",
+    "build": "npm run build --prefix web",
+    "start": "npm run build --prefix web && npm start --prefix server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
