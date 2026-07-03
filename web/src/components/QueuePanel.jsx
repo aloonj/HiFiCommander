@@ -7,7 +7,7 @@ export function QueuePanel({ queueState, onJump }) {
   const currentIndex = queueState?.currentIndex ?? -1;
 
   return (
-    <div className="w-72 shrink-0 border-l flex flex-col">
+    <div className="w-full h-56 md:h-auto md:w-72 shrink-0 border-t md:border-t-0 md:border-l flex flex-col">
       <div className="flex items-center gap-2 px-4 py-3 border-b text-sm font-medium">
         <ListMusic className="size-4" />
         Queue

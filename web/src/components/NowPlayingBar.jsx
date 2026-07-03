@@ -247,30 +247,49 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
         </div>
       )}
 
-      <div className="border-t px-4 py-3 flex items-center gap-4">
-        <button
-          className="w-56 min-w-0 shrink-0 flex items-center gap-3 text-left disabled:cursor-default"
-          disabled={!track}
-          onClick={() => track && setExpanded(true)}
-        >
-          <Thumb src={track?.albumArtURI} className="size-10 rounded shrink-0" />
-          {track ? (
-            <div className="min-w-0">
-              <div className="truncate font-medium text-sm">{track.title}</div>
-              <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">Nothing playing</div>
-          )}
-          {track && <ChevronUp className="size-3.5 text-muted-foreground shrink-0 ml-auto" />}
-        </button>
+      <div className="border-t relative">
+        <div
+          className="md:hidden absolute top-0 left-0 h-0.5 bg-primary"
+          style={{ width: `${duration ? Math.min(100, (shownSeconds / duration) * 100) : 0}%` }}
+        />
 
-        <div className="flex-1 flex items-center gap-3 min-w-0">
-          <TransportControls rendererUdn={rendererUdn} track={track} isPlaying={isPlaying} />
-          {seekBar}
+        <div className="px-4 py-3 flex items-center gap-3 sm:gap-4">
+          <button
+            className="w-auto sm:w-56 min-w-0 shrink sm:shrink-0 flex items-center gap-3 text-left disabled:cursor-default"
+            disabled={!track}
+            onClick={() => track && setExpanded(true)}
+          >
+            <Thumb src={track?.albumArtURI} className="size-10 rounded shrink-0" />
+            {track ? (
+              <div className="min-w-0">
+                <div className="truncate font-medium text-sm">{track.title}</div>
+                <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">Nothing playing</div>
+            )}
+            {track && <ChevronUp className="size-3.5 text-muted-foreground shrink-0 ml-auto hidden sm:block" />}
+          </button>
+
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <TransportControls rendererUdn={rendererUdn} track={track} isPlaying={isPlaying} />
+          </div>
+
+          <div className="hidden md:flex flex-1 items-center gap-3 min-w-0">{seekBar}</div>
+
+          <div className="hidden lg:flex">{volumeControl}</div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="icon" variant="ghost" className="lg:hidden shrink-0">
+                {muted ? <VolumeX /> : <Volume2 />}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64">
+              {volumeControl}
+            </PopoverContent>
+          </Popover>
         </div>
-
-        {volumeControl}
       </div>
     </>
   );

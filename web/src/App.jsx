@@ -73,7 +73,7 @@ export default function App() {
         onRendererChange={setRendererUdn}
       />
 
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <BrowsePane
           serverUdn={serverUdn}
           path={path}
