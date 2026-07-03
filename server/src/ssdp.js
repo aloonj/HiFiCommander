@@ -68,6 +68,12 @@ export class DeviceRegistry extends EventEmitter {
     // firewall rule that allows inbound UDP/1900 from the LAN.
     this.client = new Client({ sourcePort: 1900 });
     this.client.on('response', (headers) => this._handleResponse(headers));
+    // Some devices don't answer M-SEARCH but do broadcast NOTIFY ssdp:alive
+    // on their own (e.g. right after waking from a low-power network state) -
+    // node-ssdp parses these separately from search responses, so both need
+    // wiring up to actually see them.
+    this.client.on('advertise-alive', (headers) => this._handleResponse(headers));
+    this.client.on('advertise-bye', (headers) => this._handleBye(headers));
   }
 
   // Some older/quirky devices (e.g. this project's Marantz M-CR611) don't
@@ -128,6 +134,16 @@ export class DeviceRegistry extends EventEmitter {
     } catch {
       // ignore devices we can't fetch/parse
     }
+  }
+
+  _handleBye(headers) {
+    const usn = headers.USN;
+    if (!usn) return;
+    const udn = usn.split('::')[0];
+    const entry = this.devices.get(udn);
+    if (!entry || entry.pinned) return;
+    this.devices.delete(udn);
+    this.emit('update', this.getDevices());
   }
 
   _pruneStale() {
