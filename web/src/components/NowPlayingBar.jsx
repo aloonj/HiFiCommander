@@ -76,8 +76,28 @@ function TransportControls({ rendererUdn, track, isPlaying, size = 'default' }) 
   );
 }
 
+function AdjacentTrack({ track, label, onClick }) {
+  if (!track) return <div className="hidden lg:block w-40" />;
+  return (
+    <button
+      className="hidden lg:flex w-40 flex-col items-center gap-2 text-center opacity-50 hover:opacity-100 transition-opacity"
+      title={label}
+      onClick={onClick}
+    >
+      <Thumb src={track.albumArtURI} className="size-24 rounded-lg shadow-lg" />
+      <div className="min-w-0 w-full">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="truncate text-sm font-medium">{track.title}</div>
+        <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
+      </div>
+    </button>
+  );
+}
+
 export function NowPlayingBar({ rendererUdn, queueState }) {
   const track = queueState?.tracks?.[queueState.currentIndex];
+  const prevTrack = queueState?.tracks?.[queueState.currentIndex - 1];
+  const nextTrack = queueState?.tracks?.[queueState.currentIndex + 1];
   const transportState = queueState?.transportState;
   const isPlaying = transportState === 'PLAYING';
   const [expanded, setExpanded] = useState(false);
@@ -229,7 +249,11 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
             <X />
           </Button>
 
-          <Thumb src={track?.albumArtURI} className="w-full max-w-[min(60vw,420px)] aspect-square rounded-xl shadow-2xl" />
+          <div className="flex items-center justify-center gap-6 w-full">
+            <AdjacentTrack track={prevTrack} label="Previous" onClick={() => api.previous(rendererUdn)} />
+            <Thumb src={track?.albumArtURI} className="w-full max-w-[min(60vw,420px)] aspect-square rounded-xl shadow-2xl" />
+            <AdjacentTrack track={nextTrack} label="Next" onClick={() => api.next(rendererUdn)} />
+          </div>
 
           <div className="text-center">
             <div className="text-2xl font-semibold">{track?.title}</div>
