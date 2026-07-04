@@ -61,6 +61,18 @@ keep that setting (or pre-pin your devices to sidestep discovery entirely).
 Renderer/server data (pinned devices, volume limits) persists in
 `server/data/`, mounted as a volume in the compose file.
 
+## Discord rich presence
+
+Optional: shows the current track as your Discord activity. Create an
+application at <https://discord.com/developers/applications>, copy its
+Application ID into `.env` as `DISCORD_CLIENT_ID` (see `.env.example`),
+and restart. Works with the official client and with Vesktop/arRPC (enable
+Rich Presence in Vesktop settings). For an image on the activity card,
+upload an art asset named `cover` under the application's Rich Presence
+assets. The compose file mounts the host runtime dir so the container can
+reach the IPC socket; presence is skipped entirely when `DISCORD_CLIENT_ID`
+is unset or Discord isn't running.
+
 ## Pinning a device manually
 
 If a device won't show up via discovery, add its description XML URL to

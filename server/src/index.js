@@ -12,12 +12,14 @@ import { pause, play, seek } from './avTransport.js';
 import { getVolume, setVolume, getMute, setMute } from './renderingControl.js';
 import { loadPinnedLocations, savePinnedLocations } from './pinnedStore.js';
 import { loadVolumeLimits, saveVolumeLimits } from './volumeLimitStore.js';
+import { DiscordPresence } from './discordPresence.js';
 
 const PORT = process.env.PORT || 3000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const registry = new DeviceRegistry();
 const queueManager = new QueueManager(registry);
+const discordPresence = new DiscordPresence(process.env.DISCORD_CLIENT_ID);
 let volumeLimits = {}; // rendererUdn -> max volume (1-100)
 
 const app = express();
@@ -236,7 +238,10 @@ function broadcast(message) {
 }
 
 registry.on('update', (devices) => broadcast({ type: 'devices', payload: devices }));
-queueManager.on('state', (state) => broadcast({ type: 'queue-state', payload: state }));
+queueManager.on('state', (state) => {
+  broadcast({ type: 'queue-state', payload: state });
+  discordPresence.onQueueState(state);
+});
 
 wss.on('connection', (socket) => {
   socket.send(JSON.stringify({ type: 'devices', payload: registry.getDevices() }));
@@ -256,6 +261,7 @@ async function main() {
 
   registry.start();
   queueManager.start();
+  discordPresence.start();
 
   httpServer.listen(PORT, () => {
     console.log(`nodeDLNA server listening on http://localhost:${PORT}`);

@@ -5,6 +5,14 @@ services:
     # Docker's default bridge networking NATs that away, so this container
     # needs to share the host's network stack directly.
     network_mode: host
+    environment:
+      # Discord rich presence (optional): app client id from the Discord
+      # developer portal, set in .env. The desktop client's IPC socket lives
+      # in the host user's runtime dir; mount the whole dir rather than the
+      # socket file so the mount survives Discord restarts.
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+      - XDG_RUNTIME_DIR=/run/host-runtime
     volumes:
       - ./server/data:/app/server/data
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}:/run/host-runtime
     restart: unless-stopped
