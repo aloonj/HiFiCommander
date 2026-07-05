@@ -64,8 +64,12 @@ export class DeviceRegistry extends EventEmitter {
   constructor() {
     super();
     this.devices = new Map(); // udn -> { info, lastSeen, kind, pinned, location }
-    // Bind to the standard SSDP port so unicast M-SEARCH replies match the
-    // firewall rule that allows inbound UDP/1900 from the LAN.
+    this._createClient();
+  }
+
+  // Bind to the standard SSDP port so unicast M-SEARCH replies match the
+  // firewall rule that allows inbound UDP/1900 from the LAN.
+  _createClient() {
     this.client = new Client({ sourcePort: 1900 });
     this.client.on('response', (headers) => this._handleResponse(headers));
     // Some devices don't answer M-SEARCH but do broadcast NOTIFY ssdp:alive
@@ -74,6 +78,21 @@ export class DeviceRegistry extends EventEmitter {
     // wiring up to actually see them.
     this.client.on('advertise-alive', (headers) => this._handleResponse(headers));
     this.client.on('advertise-bye', (headers) => this._handleBye(headers));
+  }
+
+  // Under Docker host networking, the container can start SSDP discovery
+  // before the host's real NIC is up (e.g. right at boot), so the client's
+  // first bind attempt sees zero usable interfaces and throws "No sockets
+  // available". node-ssdp doesn't recover from that on its own: it silently
+  // marks itself "started" with an empty socket map afterwards, so it never
+  // tries binding again even once the interface comes up. Detect that stuck
+  // state and recreate the client from scratch so discovery can succeed once
+  // the network is actually ready.
+  _ensureClientReady() {
+    const stuck = this.client._started && Object.keys(this.client.sockets ?? {}).length === 0;
+    if (!stuck) return;
+    this.client.stop();
+    this._createClient();
   }
 
   // Some older/quirky devices (e.g. this project's Marantz M-CR611) don't
@@ -113,8 +132,13 @@ export class DeviceRegistry extends EventEmitter {
   }
 
   _search() {
-    this.client.search(MEDIA_SERVER_TYPE);
-    this.client.search(MEDIA_RENDERER_TYPE);
+    this._ensureClientReady();
+    // search() returns a promise only while the client hasn't started yet
+    // (the first bind attempt); swallow rejection here so a still-not-ready
+    // network doesn't spam unhandled-rejection warnings, and just wait for
+    // the next tick's _ensureClientReady() to retry.
+    Promise.resolve(this.client.search(MEDIA_SERVER_TYPE)).catch(() => {});
+    Promise.resolve(this.client.search(MEDIA_RENDERER_TYPE)).catch(() => {});
   }
 
   async _handleResponse(headers) {
