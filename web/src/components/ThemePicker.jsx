@@ -34,13 +34,13 @@ export function ThemePicker() {
                       setActive(opt.key);
                     }}
                     className={cn(
-                      'relative size-9 rounded-full border-2 transition-transform hover:scale-110',
+                      'relative size-9 rounded-lg border-2 transition-transform hover:scale-110',
                       active === opt.key ? 'border-foreground' : 'border-transparent'
                     )}
                   >
                     <span
                       className={cn(
-                        'absolute inset-0.5 rounded-full',
+                        'absolute inset-0.5 rounded-[calc(var(--radius-lg)-2px)]',
                         !opt.swatch && 'bg-gradient-to-br from-neutral-300 to-neutral-600'
                       )}
                       style={opt.swatch ? { backgroundColor: opt.swatch } : undefined}
@@ -50,7 +50,7 @@ export function ThemePicker() {
                     )}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>{opt.label}</TooltipContent>
+                <TooltipContent className="pointer-events-none">{opt.label}</TooltipContent>
               </Tooltip>
             ))}
           </div>
