@@ -227,7 +227,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
   );
 
   const volumeControl = (
-    <div className="flex items-center gap-1 w-44 shrink-0">
+    <div className="flex items-center gap-1 w-44 shrink-0 mx-auto">
       <Button
         size="icon"
         variant="ghost"
