@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Settings } from 'lucide-react';
+import { Check, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { THEMES } from '@/lib/themes';
@@ -15,7 +15,7 @@ export function ThemePicker() {
     <Popover>
       <PopoverTrigger asChild>
         <Button size="icon" variant="ghost" title="Theme">
-          <Settings className="size-4" />
+          <Palette className="size-4" />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-56 p-1 max-h-96 overflow-y-auto">
