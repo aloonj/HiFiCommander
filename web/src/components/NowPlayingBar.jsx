@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronUp, Pause, Play, Settings2, SkipBack, SkipForward, Square, Volume2, VolumeX, X } from 'lucide-react';
+import { ChevronUp, Pause, Play, Repeat, Settings2, SkipBack, SkipForward, Square, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -41,10 +41,20 @@ function VolumeCapPopover({ maxVolume, onChange }) {
   );
 }
 
-function TransportControls({ rendererUdn, track, isPlaying, size = 'default' }) {
+function TransportControls({ rendererUdn, track, isPlaying, repeat, size = 'default' }) {
   const iconSize = size === 'large' ? 'size-5' : '';
   return (
     <>
+      <Button
+        size="icon"
+        variant="ghost"
+        disabled={!track}
+        className={repeat ? 'text-primary' : undefined}
+        title={repeat ? 'Repeat: on' : 'Repeat: off'}
+        onClick={() => api.setRepeat(rendererUdn, !repeat)}
+      >
+        <Repeat className={iconSize} />
+      </Button>
       <Button size="icon" variant="ghost" disabled={!track} onClick={() => api.previous(rendererUdn)}>
         <SkipBack className={`fill-current ${iconSize}`} />
       </Button>
@@ -264,7 +274,13 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
           <div className="w-full max-w-md">{seekBar}</div>
 
           <div className="flex items-center gap-4">
-            <TransportControls rendererUdn={rendererUdn} track={track} isPlaying={isPlaying} size="large" />
+            <TransportControls
+              rendererUdn={rendererUdn}
+              track={track}
+              isPlaying={isPlaying}
+              repeat={queueState?.repeat}
+              size="large"
+            />
           </div>
 
           <div className="w-full max-w-[220px]">{volumeControl}</div>
@@ -296,7 +312,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
           </button>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <TransportControls rendererUdn={rendererUdn} track={track} isPlaying={isPlaying} />
+            <TransportControls rendererUdn={rendererUdn} track={track} isPlaying={isPlaying} repeat={queueState?.repeat} />
           </div>
 
           <div className="hidden md:flex flex-1 items-center gap-3 min-w-0">{seekBar}</div>

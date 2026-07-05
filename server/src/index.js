@@ -86,6 +86,11 @@ app.post('/api/queue/:rendererUdn/add', (req, res) => {
   res.json(queueManager.getState(req.params.rendererUdn));
 });
 
+app.post('/api/queue/:rendererUdn/repeat', (req, res) => {
+  queueManager.setRepeat(req.params.rendererUdn, !!req.body.repeat);
+  res.json(queueManager.getState(req.params.rendererUdn));
+});
+
 app.post('/api/queue/:rendererUdn/next', async (req, res) => {
   try {
     await queueManager.next(req.params.rendererUdn);

@@ -22,6 +22,7 @@ export const api = {
   playNow: (rendererUdn, tracks, startIndex = 0) => request('POST', `/api/queue/${rendererUdn}/play`, { tracks, startIndex }),
   addToQueue: (rendererUdn, tracks) => request('POST', `/api/queue/${rendererUdn}/add`, { tracks }),
   next: (rendererUdn) => request('POST', `/api/queue/${rendererUdn}/next`),
+  setRepeat: (rendererUdn, repeat) => request('POST', `/api/queue/${rendererUdn}/repeat`, { repeat }),
   previous: (rendererUdn) => request('POST', `/api/queue/${rendererUdn}/previous`),
   jump: (rendererUdn, index) => request('POST', `/api/queue/${rendererUdn}/jump`, { index }),
   stop: (rendererUdn) => request('POST', `/api/queue/${rendererUdn}/stop`),

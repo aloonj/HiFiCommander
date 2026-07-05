@@ -15,6 +15,7 @@ function emptyQueueState() {
     active: false, // true only while we expect auto-advance to fire on track end
     lastKnownState: null,
     lastCommandAt: 0,
+    repeat: false, // when the queue reaches the end, start over from track 0 instead of stopping
   };
 }
 
@@ -64,8 +65,17 @@ export class QueueManager extends EventEmitter {
 
   async next(rendererUdn) {
     const queue = this._getQueue(rendererUdn);
-    if (queue.currentIndex + 1 >= queue.tracks.length) return;
+    if (queue.currentIndex + 1 >= queue.tracks.length) {
+      if (queue.repeat && queue.tracks.length > 0) await this._advanceTo(rendererUdn, 0);
+      return;
+    }
     await this._advanceTo(rendererUdn, queue.currentIndex + 1);
+  }
+
+  setRepeat(rendererUdn, repeat) {
+    const queue = this._getQueue(rendererUdn);
+    queue.repeat = repeat;
+    this._emitState(rendererUdn);
   }
 
   async previous(rendererUdn) {
@@ -111,6 +121,7 @@ export class QueueManager extends EventEmitter {
       currentIndex: queue.currentIndex,
       active: queue.active,
       transportState: queue.lastKnownState,
+      repeat: queue.repeat,
     };
   }
 
@@ -143,6 +154,10 @@ export class QueueManager extends EventEmitter {
     if (trackEnded && queue.active) {
       if (queue.currentIndex + 1 < queue.tracks.length) {
         await this._advanceTo(rendererUdn, queue.currentIndex + 1);
+        return;
+      }
+      if (queue.repeat && queue.tracks.length > 0) {
+        await this._advanceTo(rendererUdn, 0);
         return;
       }
       // Queue finished naturally; nothing left to auto-advance to.
