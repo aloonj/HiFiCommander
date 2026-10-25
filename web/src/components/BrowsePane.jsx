@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, ChevronDown, Folder, Music, Play, Plus, ListMusic, Search, X, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { ChevronDown, Folder, FolderUp, Music, Play, Plus, ListMusic, Search, X, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -105,18 +105,6 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b">
         <div className="flex min-w-0 items-center gap-2">
-          {path.length > 1 && (
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              className="shrink-0"
-              title={`Back to ${path.length === 2 ? server?.friendlyName ?? 'library' : path[path.length - 2].title}`}
-              onClick={() => onNavigate(path.slice(0, -1))}
-            >
-              <ArrowLeft className="size-4" />
-            </Button>
-          )}
-
           {/* Picking the current library again goes back to its top level. */}
           <LibraryPicker {...pickerProps}>
             <Button size="sm" variant="outline" className="shrink-0 gap-1" title="Switch library">
@@ -126,13 +114,25 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
           </LibraryPicker>
 
           {path.length > 1 && (
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="shrink-0"
+              title={`Up to ${path.length === 2 ? server?.friendlyName ?? 'library' : path[path.length - 2].title}`}
+              onClick={() => onNavigate(path.slice(0, -1))}
+            >
+              <FolderUp className="size-4" />
+            </Button>
+          )}
+
+          {path.length > 1 && (
             <Breadcrumb className="min-w-0">
               <BreadcrumbList className="flex-nowrap">
                 {path.slice(1).map((crumb, i) => {
                   const depth = i + 1;
                   return (
                     <div key={crumb.id} className="flex min-w-0 items-center gap-1.5">
-                      <BreadcrumbSeparator />
+                      {depth > 1 && <BreadcrumbSeparator />}
                       <BreadcrumbItem className="min-w-0">
                         {depth === path.length - 1 ? (
                           <BreadcrumbPage className="truncate">{crumb.title}</BreadcrumbPage>
