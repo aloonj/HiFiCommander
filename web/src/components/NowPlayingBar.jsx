@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Thumb } from '@/components/Thumb';
-import { api } from '@/lib/api';
 import { formatSeconds, parseDuration, secondsToRelTime } from '@/lib/time';
 
 function VolumeCapPopover({ maxVolume, onChange }) {
@@ -41,7 +40,7 @@ function VolumeCapPopover({ maxVolume, onChange }) {
   );
 }
 
-function TransportControls({ rendererUdn, track, isPlaying, repeat, size = 'default' }) {
+function TransportControls({ controller, track, isPlaying, repeat, size = 'default' }) {
   const iconSize = size === 'large' ? 'size-5' : '';
   return (
     <>
@@ -51,18 +50,18 @@ function TransportControls({ rendererUdn, track, isPlaying, repeat, size = 'defa
         disabled={!track}
         className={repeat ? 'text-primary' : undefined}
         title={repeat ? 'Repeat: on' : 'Repeat: off'}
-        onClick={() => api.setRepeat(rendererUdn, !repeat)}
+        onClick={() => controller.setRepeat(!repeat)}
       >
         <Repeat className={iconSize} />
       </Button>
-      <Button size="icon" variant="ghost" disabled={!track} onClick={() => api.previous(rendererUdn)}>
+      <Button size="icon" variant="ghost" disabled={!track} onClick={() => controller.previous()}>
         <SkipBack className={`fill-current ${iconSize}`} />
       </Button>
       <Button
         size={size === 'large' ? 'lg' : 'icon'}
         className={size === 'large' ? 'size-14 rounded-full' : undefined}
         disabled={!track}
-        onClick={() => (isPlaying ? api.pause(rendererUdn) : api.resume(rendererUdn))}
+        onClick={() => (isPlaying ? controller.pause() : controller.resume())}
       >
         {isPlaying ? (
           <Pause className={`fill-current ${size === 'large' ? 'size-6' : ''}`} />
@@ -70,7 +69,7 @@ function TransportControls({ rendererUdn, track, isPlaying, repeat, size = 'defa
           <Play className={`fill-current ${size === 'large' ? 'size-6' : ''}`} />
         )}
       </Button>
-      <Button size="icon" variant="ghost" disabled={!track} onClick={() => api.next(rendererUdn)}>
+      <Button size="icon" variant="ghost" disabled={!track} onClick={() => controller.next()}>
         <SkipForward className={`fill-current ${iconSize}`} />
       </Button>
       <Button
@@ -78,7 +77,7 @@ function TransportControls({ rendererUdn, track, isPlaying, repeat, size = 'defa
         variant="ghost"
         disabled={!track}
         title="Stop and clear queue"
-        onClick={() => api.stop(rendererUdn)}
+        onClick={() => controller.stop()}
       >
         <Square className={`fill-current ${size === 'large' ? 'size-4' : 'size-3.5'}`} />
       </Button>
@@ -104,7 +103,7 @@ function AdjacentTrack({ track, label, onClick }) {
   );
 }
 
-export function NowPlayingBar({ rendererUdn, queueState }) {
+export function NowPlayingBar({ rendererUdn, controller, queueState }) {
   const track = queueState?.tracks?.[queueState.currentIndex];
   const prevTrack = queueState?.tracks?.[queueState.currentIndex - 1];
   const nextTrack = queueState?.tracks?.[queueState.currentIndex + 1];
@@ -157,16 +156,16 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
   const [maxVolume, setMaxVolume] = useState(null);
 
   useEffect(() => {
-    if (!rendererUdn) return;
-    api.getVolumeLimit(rendererUdn).then((r) => setMaxVolume(r.maxVolume)).catch(() => {});
+    if (!controller) return;
+    controller.getVolumeLimit().then((r) => setMaxVolume(r.maxVolume)).catch(() => {});
   }, [rendererUdn]);
 
   useEffect(() => {
-    if (!rendererUdn) return;
+    if (!controller) return;
     let cancelled = false;
     const refresh = () =>
-      api
-        .getVolume(rendererUdn)
+      controller
+        .getVolume()
         .then((v) => {
           if (cancelled) return;
           setMuted(v.muted);
@@ -174,7 +173,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
           // that land above the cap and bring the renderer back in line.
           if (maxVolume != null && v.volume > maxVolume) {
             setVolumeState(maxVolume);
-            api.setVolume(rendererUdn, maxVolume).catch(() => {});
+            controller.setVolume(maxVolume).catch(() => {});
           } else {
             setVolumeState(v.volume);
           }
@@ -190,14 +189,14 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
 
   function changeVolumeCap(next) {
     setMaxVolume(next);
-    api.setVolumeLimit(rendererUdn, next).catch(() => {});
+    controller.setVolumeLimit(next).catch(() => {});
     if (next != null && volume > next) {
       setVolumeState(next);
-      api.setVolume(rendererUdn, next).catch(() => {});
+      controller.setVolume(next).catch(() => {});
     }
   }
 
-  if (!rendererUdn) {
+  if (!controller) {
     return <div className="border-t px-4 py-4 text-center text-sm text-muted-foreground">No renderer connected</div>;
   }
 
@@ -217,7 +216,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
         value={[shownSeconds]}
         onValueChange={([v]) => setSeekDraft(v)}
         onValueCommit={([v]) => {
-          api.seek(rendererUdn, secondsToRelTime(v));
+          controller.seek(secondsToRelTime(v));
           positionRef.current = { relSeconds: v, receivedAt: Date.now() };
           setSeekDraft(null);
         }}
@@ -234,7 +233,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
         onClick={() => {
           const next = !muted;
           setMuted(next);
-          api.setMute(rendererUdn, next);
+          controller.setMute(next);
         }}
       >
         {muted ? <VolumeX /> : <Volume2 />}
@@ -245,7 +244,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
         step={1}
         value={[volume ?? 0]}
         onValueChange={([v]) => setVolumeState(v)}
-        onValueCommit={([v]) => api.setVolume(rendererUdn, v)}
+        onValueCommit={([v]) => controller.setVolume(v)}
       />
       <VolumeCapPopover maxVolume={maxVolume} onChange={changeVolumeCap} />
     </div>
@@ -260,9 +259,9 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
           </Button>
 
           <div className="flex items-center justify-center gap-6 w-full">
-            <AdjacentTrack track={prevTrack} label="Previous" onClick={() => api.previous(rendererUdn)} />
+            <AdjacentTrack track={prevTrack} label="Previous" onClick={() => controller.previous()} />
             <Thumb src={track?.albumArtURI} className="w-full max-w-[min(60vw,420px)] aspect-square rounded-xl shadow-2xl" />
-            <AdjacentTrack track={nextTrack} label="Next" onClick={() => api.next(rendererUdn)} />
+            <AdjacentTrack track={nextTrack} label="Next" onClick={() => controller.next()} />
           </div>
 
           <div className="text-center">
@@ -275,7 +274,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
 
           <div className="flex items-center gap-4">
             <TransportControls
-              rendererUdn={rendererUdn}
+              controller={controller}
               track={track}
               isPlaying={isPlaying}
               repeat={queueState?.repeat}
@@ -312,7 +311,7 @@ export function NowPlayingBar({ rendererUdn, queueState }) {
           </button>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            <TransportControls rendererUdn={rendererUdn} track={track} isPlaying={isPlaying} repeat={queueState?.repeat} />
+            <TransportControls controller={controller} track={track} isPlaying={isPlaying} repeat={queueState?.repeat} />
           </div>
 
           <div className="hidden md:flex flex-1 items-center gap-3 min-w-0">{seekBar}</div>
