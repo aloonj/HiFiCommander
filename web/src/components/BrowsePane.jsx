@@ -103,8 +103,9 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
 
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
-      <div className="flex items-center justify-between gap-4 px-4 py-3 border-b">
-        <div className="flex min-w-0 items-center gap-2">
+      {/* Sized by the pane, not the window, since the queue takes part of it. */}
+      <div className="@container flex items-center justify-between gap-4 px-4 py-3 border-b">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           {/* Picking the current library again goes back to its top level. */}
           <LibraryPicker {...pickerProps}>
             <Button size="sm" variant="outline" className="shrink-0 gap-1" title="Switch library">
@@ -176,11 +177,11 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
 
           {tracks.length > 0 && (
             <>
-              <Button size="sm" variant="secondary" onClick={() => onAddTracks(tracks)}>
-                <Plus /> Queue all
+              <Button size="sm" variant="secondary" title="Queue all" onClick={() => onAddTracks(tracks)}>
+                <Plus /> <span className="hidden @2xl:inline">Queue all</span>
               </Button>
-              <Button size="sm" onClick={() => onPlayTracks(tracks, 0)}>
-                <Play /> Play all
+              <Button size="sm" title="Play all" onClick={() => onPlayTracks(tracks, 0)}>
+                <Play /> <span className="hidden @2xl:inline">Play all</span>
               </Button>
             </>
           )}
