@@ -139,7 +139,7 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
           type="button"
           className={cn('flex min-w-0 items-center gap-0.5 text-muted-foreground hover:text-foreground', className)}
         >
-          <span className="truncate">on {renderer?.friendlyName ?? 'no player'}</span>
+          <span className="truncate">Playing on {renderer?.friendlyName ?? 'no player'}</span>
           <ChevronDown className="size-3 shrink-0" />
         </button>
       </DevicePicker>
@@ -376,7 +376,6 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
                 </div>
                 {track && <ChevronUp className="size-3.5 text-muted-foreground shrink-0 hidden sm:block" />}
               </button>
-              <div className="flex min-w-0 text-xs leading-4 text-muted-foreground">{playerPicker('min-w-0', 'top')}</div>
               {formatLabel(track?.res) && (
                 <div className="flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground">
                   <span className="truncate">{formatLabel(track.res)}</span>
@@ -410,6 +409,9 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
             </PopoverContent>
           </Popover>
         </div>
+
+        {/* Its own centred line, away from the expand chevron by the title. */}
+        <div className="flex justify-center px-4 pb-1.5 -mt-1.5 text-xs">{playerPicker('min-w-0', 'top')}</div>
       </div>
     </>
   );
