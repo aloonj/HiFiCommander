@@ -268,9 +268,15 @@ async function main() {
   queueManager.start();
   discordPresence.start();
 
-  httpServer.listen(PORT, () => {
-    console.log(`nodeDLNA server listening on http://localhost:${PORT}`);
+  await new Promise((resolve, reject) => {
+    httpServer.once('error', reject);
+    httpServer.listen(PORT, () => {
+      console.log(`nodeDLNA server listening on http://localhost:${PORT}`);
+      resolve();
+    });
   });
+  return PORT;
 }
 
-main();
+// Awaited by the desktop app so it only opens its window once the server is up.
+export const ready = main();

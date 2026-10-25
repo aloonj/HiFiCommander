@@ -1,12 +1,47 @@
 {
-  "name": "nodedlna",
+  "name": "hificommander",
+  "productName": "HiFiCommander",
+  "version": "0.1.0",
   "private": true,
+  "description": "DLNA music controller",
+  "main": "desktop/main.mjs",
   "scripts": {
     "dev": "concurrently -n server,web -c blue,magenta \"npm run dev --prefix server\" \"npm run dev --prefix web\"",
     "build": "npm run build --prefix web",
-    "start": "npm run build --prefix web && npm start --prefix server"
+    "start": "npm run build --prefix web && npm start --prefix server",
+    "desktop": "npm run build && electron .",
+    "desktop:build": "npm run build && electron-builder --linux dir",
+    "desktop:install": "npm run desktop:build && node desktop/install.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "fast-xml-parser": "^4.5.0",
+    "node-ssdp": "^4.0.1",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.hificommander.app",
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "package.json",
+      "desktop/**",
+      "server/package.json",
+      "server/src/**",
+      "web/dist/**"
+    ],
+    "asar": false,
+    "linux": {
+      "executableName": "hificommander"
+    }
+  },
+  "allowScripts": {
+    "electron@33.4.11": true
   }
 }

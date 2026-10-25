@@ -1,8 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { DATA_DIR } from './dataDir.js';
 
-const FILE_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', 'volume-limits.json');
+const FILE_PATH = path.join(DATA_DIR, 'volume-limits.json');
 
 export async function loadVolumeLimits() {
   try {
