@@ -26,7 +26,7 @@ async function start() {
     dialog.showErrorBox(
       'HiFiCommander could not start',
       err.code === 'EADDRINUSE'
-        ? `Port ${err.port} is already in use. Is the Docker container or a dev server still running?`
+        ? `Port ${err.port} is already in use. Is a dev server still running?`
         : err.message
     );
     app.exit(1);

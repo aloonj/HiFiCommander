@@ -90,8 +90,8 @@ export class DeviceRegistry extends EventEmitter {
     this.client.on('advertise-bye', (headers) => this._handleBye(headers));
   }
 
-  // Under Docker host networking, the container can start SSDP discovery
-  // before the host's real NIC is up (e.g. right at boot), so the client's
+  // At boot (or under Docker host networking) SSDP discovery can start
+  // before the host's real NIC is up, so the client's
   // first bind attempt sees zero usable interfaces and throws "No sockets
   // available". node-ssdp doesn't recover from that on its own: it silently
   // marks itself "started" with an empty socket map afterwards, so it never

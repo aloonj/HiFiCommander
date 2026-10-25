@@ -20,9 +20,10 @@ to it.
 
 ## Features
 
-- **Discovery + pinning** — auto-discovers servers/renderers via SSDP; devices
-  that don't reliably answer M-SEARCH can be pinned by their description URL
-  instead, bypassing discovery entirely.
+- **Discovery** — finds servers/renderers via SSDP, and also catches devices
+  that ignore searches (via their announcements, their own SSDP traffic and
+  mDNS). Found devices are remembered, so a new IP is picked up on its own.
+  A description URL can still be added by hand as a last resort.
 - **Browse** — folder/album/artist browsing over ContentDirectory, with list
   and grid views, filtering, and an alphabet jump strip for long lists.
 - **Playback control** — play, pause, seek, and a queue with auto-advance
@@ -47,19 +48,19 @@ npm run dev           # server on :3000, web dev server with hot reload
 npm start
 ```
 
-### Docker
+### Desktop app (Linux)
 
 ```bash
-docker compose up -d --build
+npm run desktop:install
 ```
 
-SSDP discovery needs multicast and a fixed UDP port (1900), which Docker's
-default bridge network NATs away — `docker-compose.yml` already sets
-`network_mode: host` so discovery works. If you adapt the compose file,
-keep that setting (or pre-pin your devices to sidestep discovery entirely).
+Builds an Electron app and installs it to `~/.local/share/hificommander` with
+a launcher entry. The server runs inside the app; closing the window hides it
+to the tray so playback keeps going. Settings (remembered devices, pins,
+volume limits) live in `~/.config/HiFiCommander`.
 
-Renderer/server data (pinned devices, volume limits) persists in
-`server/data/`, mounted as a volume in the compose file.
+`npm run desktop` runs it straight from the repo. Only one copy can run at a
+time, since discovery needs UDP port 1900.
 
 ## Discord rich presence
 
@@ -69,13 +70,10 @@ Application ID into `.env` as `DISCORD_CLIENT_ID` (see `.env.example`),
 and restart. Works with the official client and with Vesktop/arRPC (enable
 Rich Presence in Vesktop settings). For an image on the activity card,
 upload an art asset named `cover` under the application's Rich Presence
-assets. The compose file mounts the host runtime dir so the container can
-reach the IPC socket; presence is skipped entirely when `DISCORD_CLIENT_ID`
+assets. Presence is skipped entirely when `DISCORD_CLIENT_ID`
 is unset or Discord isn't running.
 
 ## Pinning a device manually
 
-If a device won't show up via discovery, add its description XML URL to
-`server/data/pinned-devices.json` before starting (see
-`pinned-devices.example.json` for the format), or pin it from the UI once
-running.
+If a device never shows up, open Devices and use "Add by URL" with its
+description XML URL.
