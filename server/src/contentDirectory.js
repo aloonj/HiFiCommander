@@ -57,6 +57,7 @@ function parseItem(node) {
     title: textOf(node['dc:title']),
     artist: textOf(node['dc:creator'] ?? node['upnp:artist']),
     album: textOf(node['upnp:album']),
+    trackNumber: numberAttr(textOf(node['upnp:originalTrackNumber'])),
     albumArtURI: textOf(node['upnp:albumArtURI']),
     class: upnpClass,
     res: res

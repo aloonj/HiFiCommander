@@ -175,6 +175,7 @@ export class LocalLibrary extends EventEmitter {
       title: t.title,
       artist: t.artist,
       album: t.album,
+      trackNumber: t.trackNo || undefined,
       albumArtURI: `${this._base()}/art/track/${t.id}`,
       res: {
         uri: `${this._base()}/stream/${t.id}${t.ext}`,

@@ -84,6 +84,9 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
   }, [items, query, activeLetter]);
 
   const tracks = displayedItems?.filter((item) => item.type === 'track') ?? [];
+  // Track numbers only mean something when the list is one album.
+  const showTrackNumbers =
+    tracks.length > 0 && tracks.every((t) => t.trackNumber && t.album && t.album === tracks[0].album);
   const showFilters = (items?.length ?? 0) > LONG_LIST_THRESHOLD;
 
   if (!serverUdn) {
@@ -282,7 +285,13 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
                 className={cn('group flex items-center gap-3 px-4 py-2.5 hover:bg-accent cursor-pointer')}
                 onClick={() => onPlayTracks(tracks, tracks.indexOf(item))}
               >
-                <Music className="size-4 text-muted-foreground shrink-0" />
+                {showTrackNumbers ? (
+                  <span className="w-4 text-right text-xs text-muted-foreground shrink-0 tabular-nums">
+                    {item.trackNumber}
+                  </span>
+                ) : (
+                  <Music className="size-4 text-muted-foreground shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="truncate">{item.title}</div>
                   {item.artist && <div className="text-xs text-muted-foreground truncate">{item.artist}</div>}
