@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Folder, Music, Play, Plus, ListMusic, Search, X, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Folder, Music, Play, Plus, ListMusic, Search, X, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -104,45 +104,53 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b">
-        <Breadcrumb>
-          <BreadcrumbList>
-            {path.map((crumb, i) => (
-              <div key={crumb.id} className="flex items-center gap-1.5">
-                {i > 0 && <BreadcrumbSeparator />}
-                <BreadcrumbItem>
-                  {i === 0 ? (
-                    // The root crumb is the library itself: its name goes
-                    // home, the chevron switches library.
-                    <span className="flex items-center gap-0.5">
-                      {path.length === 1 ? (
-                        <BreadcrumbPage>{server?.friendlyName ?? crumb.title}</BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink asChild>
-                          <button onClick={() => onNavigate(path.slice(0, 1))}>{server?.friendlyName ?? crumb.title}</button>
-                        </BreadcrumbLink>
-                      )}
-                      <LibraryPicker {...pickerProps}>
-                        <button
-                          type="button"
-                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          title="Switch library"
-                        >
-                          <ChevronDown className="size-3.5" />
-                        </button>
-                      </LibraryPicker>
-                    </span>
-                  ) : i === path.length - 1 ? (
-                    <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink asChild>
-                      <button onClick={() => onNavigate(path.slice(0, i + 1))}>{crumb.title}</button>
-                    </BreadcrumbLink>
-                  )}
-                </BreadcrumbItem>
-              </div>
-            ))}
-          </BreadcrumbList>
-        </Breadcrumb>
+        <div className="flex min-w-0 items-center gap-2">
+          {path.length > 1 && (
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="shrink-0"
+              title={`Back to ${path.length === 2 ? server?.friendlyName ?? 'library' : path[path.length - 2].title}`}
+              onClick={() => onNavigate(path.slice(0, -1))}
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+          )}
+
+          {/* Picking the current library again goes back to its top level. */}
+          <LibraryPicker {...pickerProps}>
+            <Button size="sm" variant="outline" className="shrink-0 gap-1" title="Switch library">
+              {server?.friendlyName ?? 'Library'}
+              <ChevronDown className="size-3.5 text-muted-foreground" />
+            </Button>
+          </LibraryPicker>
+
+          {path.length > 1 && (
+            <Breadcrumb className="min-w-0">
+              <BreadcrumbList className="flex-nowrap">
+                {path.slice(1).map((crumb, i) => {
+                  const depth = i + 1;
+                  return (
+                    <div key={crumb.id} className="flex min-w-0 items-center gap-1.5">
+                      <BreadcrumbSeparator />
+                      <BreadcrumbItem className="min-w-0">
+                        {depth === path.length - 1 ? (
+                          <BreadcrumbPage className="truncate">{crumb.title}</BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink asChild>
+                            <button className="truncate" onClick={() => onNavigate(path.slice(0, depth + 1))}>
+                              {crumb.title}
+                            </button>
+                          </BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                    </div>
+                  );
+                })}
+              </BreadcrumbList>
+            </Breadcrumb>
+          )}
+        </div>
 
         <div className="flex gap-2 shrink-0">
           <div className="flex border rounded-md overflow-hidden">
