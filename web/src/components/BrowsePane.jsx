@@ -104,31 +104,66 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
       {/* Sized by the pane, not the window, since the queue takes part of it. */}
-      <div className="@container flex items-center justify-between gap-4 px-4 py-3 border-b">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div className="@container border-b">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
           {/* Picking the current library again goes back to its top level. */}
           <LibraryPicker {...pickerProps}>
-            <Button size="sm" variant="outline" className="shrink-0 gap-1" title="Switch library">
-              {server?.friendlyName ?? 'Library'}
+            <Button size="sm" variant="outline" className="min-w-0 gap-1" title="Switch library">
+              <span className="truncate">{server?.friendlyName ?? 'Library'}</span>
               <ChevronDown className="size-3.5 text-muted-foreground" />
             </Button>
           </LibraryPicker>
 
-          {path.length > 1 && (
+          <div className="flex gap-2 shrink-0">
+            <div className="flex border rounded-md overflow-hidden">
+              <Button
+                size="icon"
+                variant={view === 'list' ? 'secondary' : 'ghost'}
+                className="rounded-none size-8"
+                onClick={() => changeView('list')}
+                title="List view"
+              >
+                <ListIcon className="size-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant={view === 'grid' ? 'secondary' : 'ghost'}
+                className="rounded-none size-8"
+                onClick={() => changeView('grid')}
+                title="Grid view"
+              >
+                <LayoutGrid className="size-4" />
+              </Button>
+            </div>
+
+            {tracks.length > 0 && (
+              <>
+                <Button size="sm" variant="secondary" title="Queue all" onClick={() => onAddTracks(tracks)}>
+                  <Plus /> <span className="hidden @md:inline">Queue all</span>
+                </Button>
+                <Button size="sm" title="Play all" onClick={() => onPlayTracks(tracks, 0)}>
+                  <Play /> <span className="hidden @md:inline">Play all</span>
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* The folder path gets its own row so long names never collide with
+            the buttons above. */}
+        {path.length > 1 && (
+          <div className="flex min-w-0 items-center gap-1 px-4 pb-2.5">
             <Button
               size="icon-sm"
               variant="ghost"
-              className="shrink-0"
+              className="-ml-1.5 shrink-0"
               title={`Up to ${path.length === 2 ? server?.friendlyName ?? 'library' : path[path.length - 2].title}`}
               onClick={() => onNavigate(path.slice(0, -1))}
             >
               <FolderUp className="size-4" />
             </Button>
-          )}
-
-          {path.length > 1 && (
-            <Breadcrumb className="min-w-0">
-              <BreadcrumbList className="flex-nowrap">
+            <Breadcrumb className="min-w-0 flex-1">
+              <BreadcrumbList className="flex-nowrap overflow-hidden">
                 {path.slice(1).map((crumb, i) => {
                   const depth = i + 1;
                   return (
@@ -150,42 +185,8 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
                 })}
               </BreadcrumbList>
             </Breadcrumb>
-          )}
-        </div>
-
-        <div className="flex gap-2 shrink-0">
-          <div className="flex border rounded-md overflow-hidden">
-            <Button
-              size="icon"
-              variant={view === 'list' ? 'secondary' : 'ghost'}
-              className="rounded-none size-8"
-              onClick={() => changeView('list')}
-              title="List view"
-            >
-              <ListIcon className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant={view === 'grid' ? 'secondary' : 'ghost'}
-              className="rounded-none size-8"
-              onClick={() => changeView('grid')}
-              title="Grid view"
-            >
-              <LayoutGrid className="size-4" />
-            </Button>
           </div>
-
-          {tracks.length > 0 && (
-            <>
-              <Button size="sm" variant="secondary" title="Queue all" onClick={() => onAddTracks(tracks)}>
-                <Plus /> <span className="hidden @2xl:inline">Queue all</span>
-              </Button>
-              <Button size="sm" title="Play all" onClick={() => onPlayTracks(tracks, 0)}>
-                <Play /> <span className="hidden @2xl:inline">Play all</span>
-              </Button>
-            </>
-          )}
-        </div>
+        )}
       </div>
 
       {showFilters && (
