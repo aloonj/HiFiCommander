@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, ChevronRight, X } from 'lucide-react';
+import { Check, ChevronRight, FolderOpen, Library, Speaker, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { DeviceTag } from '@/components/DeviceTag';
@@ -67,10 +67,26 @@ function DeviceRow({ device, selected, onSelect, onForget }) {
   );
 }
 
-function Section({ title, children }) {
+function SectionHeading({ icon: Icon, children, className }) {
+  return (
+    <h3
+      className={cn(
+        'flex items-center gap-1.5 text-xs font-medium tracking-wide text-muted-foreground uppercase',
+        className
+      )}
+    >
+      <Icon className="size-3.5" />
+      {children}
+    </h3>
+  );
+}
+
+function Section({ title, icon, children }) {
   return (
     <section className="space-y-1">
-      <h3 className="px-2.5 text-xs font-medium tracking-wide text-muted-foreground uppercase">{title}</h3>
+      <SectionHeading icon={icon} className="px-2.5">
+        {title}
+      </SectionHeading>
       <ul className="space-y-0.5">{children}</ul>
     </section>
   );
@@ -142,20 +158,7 @@ export function DevicesSheet({ open, onOpenChange, devices, serverUdn, rendererU
         </SheetHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-2 pb-4">
-          <Section title="Players">
-            {devices.renderers.map((r) => (
-              <DeviceRow
-                key={r.udn}
-                device={r}
-                selected={r.udn === rendererUdn}
-                onSelect={() => onRendererChange(r.udn)}
-                onForget={r.online === false ? () => forget(r.udn) : null}
-              />
-            ))}
-            {missing('renderer')}
-          </Section>
-
-          <Section title="Libraries">
+          <Section title="Libraries" icon={Library}>
             {devices.servers.map((s) => (
               <DeviceRow
                 key={s.udn}
@@ -172,9 +175,23 @@ export function DevicesSheet({ open, onOpenChange, devices, serverUdn, rendererU
           </Section>
 
           <section className="space-y-2 px-2.5">
-            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Music folders</h3>
+            <SectionHeading icon={FolderOpen}>Music folders</SectionHeading>
             <LocalFoldersEditor library={devices.servers.find((s) => s.udn === LOCAL_LIBRARY_UDN)} />
           </section>
+
+          <Section title="Players" icon={Speaker}>
+            {devices.renderers.map((r) => (
+              <DeviceRow
+                key={r.udn}
+                device={r}
+                selected={r.udn === rendererUdn}
+                onSelect={() => onRendererChange(r.udn)}
+                onForget={r.online === false ? () => forget(r.udn) : null}
+              />
+            ))}
+            {missing('renderer')}
+          </Section>
+
 
           <section className="px-2.5">
             <button

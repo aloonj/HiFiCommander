@@ -191,6 +191,7 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
   }, [isPlaying, duration]);
 
   const [volume, setVolumeState] = useState(null);
+  const [volumeFixed, setVolumeFixed] = useState(false);
   const [muted, setMuted] = useState(false);
   const [maxVolume, setMaxVolume] = useState(null);
 
@@ -208,6 +209,7 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
         .then((v) => {
           if (cancelled) return;
           setMuted(v.muted);
+          setVolumeFixed(!!v.fixed);
           // Catch out-of-band volume changes (physical remote, another app)
           // that land above the cap and bring the renderer back in line.
           if (maxVolume != null && v.volume > maxVolume) {
@@ -281,6 +283,10 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
         min={0}
         max={maxVolume ?? 100}
         step={1}
+        // A DAC without a hardware volume control stays at full scale, since
+        // turning it down in software would alter the signal.
+        disabled={volumeFixed}
+        title={volumeFixed ? "Use the headphones' own volume control" : undefined}
         value={[volume ?? 0]}
         onValueChange={([v]) => setVolumeState(v)}
         onValueCommit={([v]) => controller.setVolume(v)}

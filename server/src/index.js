@@ -8,10 +8,10 @@ import { existsSync } from 'node:fs';
 import { DeviceRegistry } from './ssdp.js';
 import { ExtraDiscovery } from './discovery.js';
 import { LocalLibrary, LOCAL_LIBRARY_UDN } from './localLibrary.js';
+import { HiResOutputs } from './hiResOutput.js';
 import { QueueManager } from './queueManager.js';
 import { browse } from './contentDirectory.js';
-import { pause, play, seek } from './avTransport.js';
-import { getVolume, setVolume, getMute, setMute } from './renderingControl.js';
+import { pause, play, seek, getVolume, setVolume, getMute, setMute } from './transport.js';
 import { loadPinnedLocations, savePinnedLocations } from './pinnedStore.js';
 import { loadVolumeLimits, saveVolumeLimits } from './volumeLimitStore.js';
 import { DiscordPresence } from './discordPresence.js';
@@ -22,6 +22,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const registry = new DeviceRegistry();
 const extraDiscovery = new ExtraDiscovery(registry);
 const localLibrary = new LocalLibrary(PORT);
+const hiResOutputs = new HiResOutputs();
 registry.extraServers = () => [localLibrary.summary()];
 const queueManager = new QueueManager(registry);
 const discordPresence = new DiscordPresence(process.env.DISCORD_CLIENT_ID);
@@ -254,7 +255,11 @@ app.get(
   requireDevice((req) => registry.getDevice(req.params.udn)),
   async (req, res) => {
     try {
-      res.json({ volume: await getVolume(req.device), muted: await getMute(req.device) });
+      res.json({
+        volume: await getVolume(req.device),
+        muted: await getMute(req.device),
+        fixed: !!req.device.driver?.volumeFixed,
+      });
     } catch (err) {
       res.status(502).json({ error: err.message });
     }
@@ -273,6 +278,16 @@ app.post(
     } catch (err) {
       res.status(502).json({ error: err.message });
     }
+  }
+);
+
+// What a local DAC output is actually running at (rate/format), for the
+// bit-perfect check. Null for UPnP renderers, which can't report it.
+app.get(
+  '/api/renderers/:udn/signal',
+  requireDevice((req) => registry.getDevice(req.params.udn)),
+  async (req, res) => {
+    res.json({ signal: (await req.device.driver?.signal?.()) ?? null });
   }
 );
 
@@ -345,6 +360,8 @@ async function main() {
   await extraDiscovery.start();
   localLibrary.on('update', () => broadcast({ type: 'devices', payload: registry.getDevices() }));
   await localLibrary.start();
+  hiResOutputs.on('change', (renderers) => registry.setLocalRenderers(renderers));
+  await hiResOutputs.start();
   registry.start();
   queueManager.start();
   discordPresence.start();

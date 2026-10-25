@@ -10,6 +10,9 @@ export function deviceTag(device) {
   if (device.udn === LOCAL_LIBRARY_UDN) {
     return { label: 'Local', title: 'Music folders on this computer' };
   }
+  if (device.udn.startsWith('hires:')) {
+    return { label: 'DAC', title: 'USB DAC driven directly, for bit-perfect playback' };
+  }
   return { label: 'DLNA', title: 'Network device (UPnP/DLNA)' };
 }
 

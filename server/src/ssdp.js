@@ -74,6 +74,7 @@ export class DeviceRegistry extends EventEmitter {
     // stays pinned (and saved) and gets retried, rather than being forgotten.
     this.pinned = new Map(); // location -> { udn, error }
     this.scan = { scanning: false, lastScanAt: null };
+    this.localRenderers = new Map(); // udn -> { udn, friendlyName, driver }
     this._createClient();
   }
 
@@ -352,11 +353,21 @@ export class DeviceRegistry extends EventEmitter {
       };
     });
     servers.push(...(this.extraServers?.() ?? []));
+    for (const r of this.localRenderers.values()) {
+      renderers.push({ udn: r.udn, friendlyName: r.friendlyName, online: true, local: true });
+    }
     return { servers, renderers, pinned, missing: this.getMissingKnown?.() ?? [], scan: this.scan };
   }
 
   getDevice(udn) {
-    return this.devices.get(udn)?.info ?? null;
+    return this.devices.get(udn)?.info ?? this.localRenderers.get(udn) ?? null;
+  }
+
+  // Outputs on this machine (e.g. a USB DAC driven by mpv) that act as
+  // renderers but aren't UPnP devices; each carries its own driver.
+  setLocalRenderers(renderers) {
+    this.localRenderers = new Map(renderers.map((r) => [r.udn, r]));
+    this.emit('update', this.getDevices());
   }
 
   getService(udn, serviceType) {

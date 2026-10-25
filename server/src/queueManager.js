@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { playTrack, stop as transportStop, getTransportInfo, getPositionInfo } from './avTransport.js';
+import { playTrack, stop as transportStop, getTransportInfo, getPositionInfo } from './transport.js';
 
 const POLL_MS = 2000;
 // Ignore transport-state transitions for a short window after we issue our
