@@ -96,6 +96,8 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
     );
   }
 
+  const needsFolders = server?.local && !server.folders?.length;
+
   return (
     <div className="flex-1 flex flex-col min-w-0 min-h-0">
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b">
@@ -198,6 +200,14 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
       )}
 
       <div className="flex-1 overflow-y-auto">
+        {needsFolders && (
+          <div className="flex flex-col items-start gap-3 p-4 text-sm text-muted-foreground">
+            No music folders added yet.
+            <Button size="sm" variant="outline" onClick={onManageDevices}>
+              Add a folder
+            </Button>
+          </div>
+        )}
         {error && <div className="p-4 text-destructive text-sm">{error}</div>}
 
         {!items && !error && (
@@ -208,7 +218,7 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
           </div>
         )}
 
-        {items?.length === 0 && <div className="p-4 text-muted-foreground text-sm">Empty folder</div>}
+        {items?.length === 0 && !needsFolders && <div className="p-4 text-muted-foreground text-sm">Empty folder</div>}
         {items && items.length > 0 && displayedItems.length === 0 && (
           <div className="p-4 text-muted-foreground text-sm">No matches</div>
         )}

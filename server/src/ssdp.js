@@ -351,6 +351,7 @@ export class DeviceRegistry extends EventEmitter {
         error,
       };
     });
+    servers.push(...(this.extraServers?.() ?? []));
     return { servers, renderers, pinned, missing: this.getMissingKnown?.() ?? [], scan: this.scan };
   }
 

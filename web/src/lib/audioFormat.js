@@ -4,8 +4,9 @@ const CODECS = [
   [/aiff/, 'AIFF', true],
   [/dsd|dsf|dff/, 'DSD', true],
   [/alac/, 'ALAC', true],
-  [/mpeg|mp3/, 'MP3', false],
+  // Before MP3: "MPEG-4/AAC" also contains "mpeg".
   [/mp4|m4a|aac/, 'AAC', false],
+  [/mpeg|mp3/, 'MP3', false],
   [/ogg|vorbis/, 'OGG', false],
   [/opus/, 'Opus', false],
 ];

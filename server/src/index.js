@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs';
 
 import { DeviceRegistry } from './ssdp.js';
 import { ExtraDiscovery } from './discovery.js';
+import { LocalLibrary, LOCAL_LIBRARY_UDN } from './localLibrary.js';
 import { QueueManager } from './queueManager.js';
 import { browse } from './contentDirectory.js';
 import { pause, play, seek } from './avTransport.js';
@@ -20,6 +21,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const registry = new DeviceRegistry();
 const extraDiscovery = new ExtraDiscovery(registry);
+const localLibrary = new LocalLibrary(PORT);
+registry.extraServers = () => [localLibrary.summary()];
 const queueManager = new QueueManager(registry);
 const discordPresence = new DiscordPresence(process.env.DISCORD_CLIENT_ID);
 let volumeLimits = {}; // rendererUdn -> max volume (1-100)
@@ -83,6 +86,51 @@ app.delete('/api/devices/pinned', async (req, res) => {
   if (!removed) return res.status(404).json({ error: 'Pinned device not found' });
   await savePinnedLocations(registry.getPinnedLocations());
   res.json({ ok: true });
+});
+
+// DLNA-style headers so renderers treat these as seekable streams.
+const DLNA_STREAM_HEADERS = {
+  'transferMode.dlna.org': 'Streaming',
+  'contentFeatures.dlna.org': 'DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000',
+};
+
+app.get('/api/local/stream/:file', (req, res) => {
+  const file = localLibrary.trackFile(path.parse(req.params.file).name);
+  if (!file) return res.status(404).end();
+  res.sendFile(file.path, { headers: { 'Content-Type': file.mime, ...DLNA_STREAM_HEADERS } });
+});
+
+app.get(['/api/local/art/:albumKey', '/api/local/art/track/:trackId'], async (req, res) => {
+  const art = req.params.trackId
+    ? await localLibrary.trackArt(req.params.trackId)
+    : await localLibrary.albumArt(req.params.albumKey);
+  if (!art) return res.status(404).end();
+  res.set('Cache-Control', 'max-age=86400');
+  if (art.file) return res.sendFile(art.file);
+  res.type(art.mime).send(art.data);
+});
+
+app.get('/api/local/folders', (req, res) => {
+  res.json(localLibrary.summary());
+});
+
+app.put('/api/local/folders', async (req, res) => {
+  try {
+    await localLibrary.setFolders(req.body.folders ?? []);
+    res.json(localLibrary.summary());
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post('/api/local/rescan', (req, res) => {
+  localLibrary.rescan();
+  res.json({ ok: true });
+});
+
+app.get('/api/browse', (req, res, next) => {
+  if (req.query.server !== LOCAL_LIBRARY_UDN) return next();
+  res.json({ items: localLibrary.browse(req.query.id ?? '0') });
 });
 
 app.get(
@@ -295,6 +343,8 @@ async function main() {
 
   registry.on('pins-changed', (locations) => savePinnedLocations(locations).catch(() => {}));
   await extraDiscovery.start();
+  localLibrary.on('update', () => broadcast({ type: 'devices', payload: registry.getDevices() }));
+  await localLibrary.start();
   registry.start();
   queueManager.start();
   discordPresence.start();

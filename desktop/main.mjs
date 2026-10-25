@@ -1,5 +1,14 @@
-import { app, BrowserWindow, Menu, Tray, dialog, nativeImage, shell } from 'electron';
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, shell } from 'electron';
+import { fileURLToPath } from 'node:url';
 import { iconPng } from './icon.mjs';
+
+ipcMain.handle('pick-folder', async (event) => {
+  const result = await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender), {
+    title: 'Add music folder',
+    properties: ['openDirectory'],
+  });
+  return result.canceled ? undefined : result.filePaths[0];
+});
 
 // Only one copy can own SSDP's UDP 1900, so a second launch just raises the
 // existing window instead of starting another server.
@@ -49,6 +58,9 @@ function createWindow() {
     icon,
     autoHideMenuBar: true,
     backgroundColor: '#141414',
+    webPreferences: {
+      preload: fileURLToPath(new URL('./preload.cjs', import.meta.url)),
+    },
   });
   win.loadURL(`http://localhost:${port}`);
 

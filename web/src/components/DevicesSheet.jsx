@@ -3,9 +3,10 @@ import { Check, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { DeviceTag } from '@/components/DeviceTag';
+import { LocalFoldersEditor } from '@/components/LocalFoldersEditor';
 import { PinnedDevicesEditor } from '@/components/PinnedDevices';
 import { api } from '@/lib/api';
-import { SOURCE_LABELS } from '@/lib/deviceTags';
+import { LOCAL_LIBRARY_UDN, SOURCE_LABELS } from '@/lib/deviceTags';
 import { cn } from '@/lib/utils';
 
 const POLL_MS = 2000;
@@ -169,6 +170,11 @@ export function DevicesSheet({ open, onOpenChange, devices, serverUdn, rendererU
               <li className="px-2.5 py-2 text-xs text-muted-foreground">No libraries found yet.</li>
             )}
           </Section>
+
+          <section className="space-y-2 px-2.5">
+            <h3 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Music folders</h3>
+            <LocalFoldersEditor library={devices.servers.find((s) => s.udn === LOCAL_LIBRARY_UDN)} />
+          </section>
 
           <section className="px-2.5">
             <button

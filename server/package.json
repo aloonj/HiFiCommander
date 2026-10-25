@@ -12,6 +12,7 @@
     "bonjour-service": "^1.4.4",
     "express": "^4.19.2",
     "fast-xml-parser": "^4.5.0",
+    "music-metadata": "^12.3.0",
     "node-ssdp": "^4.0.1",
     "ws": "^8.18.0"
   }
