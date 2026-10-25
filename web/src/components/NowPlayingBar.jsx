@@ -367,8 +367,8 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
                 <div className="min-w-0 flex-1">
                   {track ? (
                     <>
-                      <div className="truncate font-medium text-sm">{track.title}</div>
-                      <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
+                      <div className="truncate font-medium text-sm leading-5">{track.title}</div>
+                      <div className="truncate text-xs leading-4 text-muted-foreground">{track.artist}</div>
                     </>
                   ) : (
                     <div className="truncate text-sm text-muted-foreground">Nothing playing</div>
@@ -376,17 +376,18 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
                 </div>
                 {track && <ChevronUp className="size-3.5 text-muted-foreground shrink-0 hidden sm:block" />}
               </button>
-              <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                {playerPicker('min-w-0', 'top')}
-                {formatLabel(track?.res) && <span className="shrink-0">· {formatLabel(track.res)}</span>}
-                <SignalNote
-                  rendererUdn={rendererUdn}
-                  rendererName={renderer?.friendlyName}
-                  track={track}
-                  isPlaying={isPlaying}
-                  className="hidden sm:inline"
-                />
-              </div>
+              <div className="flex min-w-0 text-xs leading-4 text-muted-foreground">{playerPicker('min-w-0', 'top')}</div>
+              {formatLabel(track?.res) && (
+                <div className="flex min-w-0 items-center gap-1 text-xs leading-4 text-muted-foreground">
+                  <span className="truncate">{formatLabel(track.res)}</span>
+                  <SignalNote
+                    rendererUdn={rendererUdn}
+                    rendererName={renderer?.friendlyName}
+                    track={track}
+                    isPlaying={isPlaying}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
