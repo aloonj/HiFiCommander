@@ -14,7 +14,8 @@ async function request(method, url, body) {
 export const api = {
   getDevices: () => request('GET', '/api/devices'),
   addPinnedDevice: (location) => request('POST', '/api/devices/pinned', { location }),
-  removePinnedDevice: (udn) => request('DELETE', `/api/devices/pinned/${udn}`),
+  updatePinnedDevice: (from, location) => request('PUT', '/api/devices/pinned', { from, location }),
+  removePinnedDevice: (location) => request('DELETE', `/api/devices/pinned?location=${encodeURIComponent(location)}`),
 
   browse: (serverUdn, objectId) => request('GET', `/api/browse?server=${encodeURIComponent(serverUdn)}&id=${encodeURIComponent(objectId)}`),
 

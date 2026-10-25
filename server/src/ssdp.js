@@ -16,7 +16,13 @@ function asArray(value) {
 }
 
 async function fetchDeviceDescription(location) {
-  const res = await fetch(location);
+  let res;
+  try {
+    res = await fetch(location, { signal: AbortSignal.timeout(5000) });
+  } catch (err) {
+    const reason = err.name === 'TimeoutError' ? 'timed out' : err.cause?.code ?? err.message;
+    throw new Error(`Couldn't reach ${new URL(location).host} (${reason})`, { cause: err.cause ?? err });
+  }
   if (!res.ok) throw new Error(`Failed to fetch device description: ${res.status}`);
   const xml = await res.text();
   const parsed = parser.parse(xml);
@@ -64,6 +70,9 @@ export class DeviceRegistry extends EventEmitter {
   constructor() {
     super();
     this.devices = new Map(); // udn -> { info, lastSeen, kind, pinned, location }
+    // Kept separately from devices so a pinned device that's switched off
+    // stays pinned (and saved) and gets retried, rather than being forgotten.
+    this.pinned = new Map(); // location -> { udn, error }
     this._createClient();
   }
 
@@ -98,25 +107,64 @@ export class DeviceRegistry extends EventEmitter {
   // Some older/quirky devices (e.g. this project's Marantz M-CR611) don't
   // reliably answer SSDP M-SEARCH. Pinning by known description URL bypasses
   // discovery entirely and survives restarts via whatever the caller persists.
-  async addPinned(location) {
-    const info = await fetchDeviceDescription(location);
-    const kind = classify(info);
-    if (!kind) throw new Error(`${info.friendlyName ?? location} is not a MediaServer or MediaRenderer`);
-    this.devices.set(info.udn, { info, kind, lastSeen: Date.now(), pinned: true, location });
-    this.emit('update', this.getDevices());
-    return { udn: info.udn, friendlyName: info.friendlyName, kind };
+  // Pins a description URL. With keepIfOffline (used when loading saved pins)
+  // an unreachable device stays pinned for later retries; otherwise a failed
+  // fetch is treated as a bad URL and nothing is pinned.
+  async addPinned(location, { keepIfOffline = false } = {}) {
+    const isNew = !this.pinned.has(location);
+    if (isNew) this.pinned.set(location, { udn: null, error: null });
+    try {
+      return await this._refreshPinned(location);
+    } catch (err) {
+      if (!keepIfOffline && isNew) this.pinned.delete(location);
+      this.emit('update', this.getDevices());
+      throw err;
+    }
   }
 
-  removePinned(udn) {
-    const entry = this.devices.get(udn);
-    if (!entry?.pinned) return false;
-    this.devices.delete(udn);
+  async _refreshPinned(location) {
+    const entry = this.pinned.get(location);
+    try {
+      const info = await fetchDeviceDescription(location);
+      const kind = classify(info);
+      if (!kind) throw new Error(`${info.friendlyName ?? location} is not a MediaServer or MediaRenderer`);
+      if (!this.pinned.has(location)) return null; // removed while fetching
+      const changed = entry.udn !== info.udn || entry.error !== null || !this.devices.has(info.udn);
+      entry.udn = info.udn;
+      entry.error = null;
+      this.devices.set(info.udn, { info, kind, lastSeen: Date.now(), pinned: true, location });
+      if (changed) this.emit('update', this.getDevices());
+      return { udn: info.udn, friendlyName: info.friendlyName, kind };
+    } catch (err) {
+      // A device that was seen before stays listed so its queue survives a
+      // nap; it's just reported offline until it answers again.
+      const error = err.message;
+      if (entry.error !== error) {
+        entry.error = error;
+        this.emit('update', this.getDevices());
+      }
+      throw err;
+    }
+  }
+
+  removePinned(location) {
+    const entry = this.pinned.get(location);
+    if (!entry) return false;
+    this.pinned.delete(location);
+    // Left listed as unpinned: if SSDP also finds it, it simply stays;
+    // otherwise the normal stale pruning removes it.
+    const device = entry.udn ? this.devices.get(entry.udn) : null;
+    if (device?.location === location) device.pinned = false;
     this.emit('update', this.getDevices());
     return true;
   }
 
   getPinnedLocations() {
-    return [...this.devices.values()].filter((e) => e.pinned).map((e) => e.location);
+    return [...this.pinned.keys()];
+  }
+
+  _refreshAllPinned() {
+    for (const location of this.pinned.keys()) this._refreshPinned(location).catch(() => {});
   }
 
   start() {
@@ -133,6 +181,7 @@ export class DeviceRegistry extends EventEmitter {
 
   _search() {
     this._ensureClientReady();
+    this._refreshAllPinned();
     // search() returns a promise only while the client hasn't started yet
     // (the first bind attempt); swallow rejection here so a still-not-ready
     // network doesn't spam unhandled-rejection warnings, and just wait for
@@ -196,7 +245,18 @@ export class DeviceRegistry extends EventEmitter {
       if (kind === 'server') servers.push(summary);
       else renderers.push(summary);
     }
-    return { servers, renderers };
+    const pinned = [...this.pinned].map(([location, { udn, error }]) => {
+      const device = udn ? this.devices.get(udn) : null;
+      return {
+        location,
+        udn,
+        friendlyName: device?.info.friendlyName ?? null,
+        kind: device?.kind ?? null,
+        online: !!device && error === null,
+        error,
+      };
+    });
+    return { servers, renderers, pinned };
   }
 
   getDevice(udn) {

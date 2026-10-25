@@ -48,8 +48,25 @@ app.post('/api/devices/pinned', async (req, res) => {
   }
 });
 
-app.delete('/api/devices/pinned/:udn', async (req, res) => {
-  const removed = registry.removePinned(req.params.udn);
+// Edit: the new URL must answer before the old one is dropped, so a typo
+// can't lose a working pin.
+app.put('/api/devices/pinned', async (req, res) => {
+  const { from, location } = req.body;
+  if (!registry.getPinnedLocations().includes(from)) {
+    return res.status(404).json({ error: 'Pinned device not found' });
+  }
+  try {
+    const info = await registry.addPinned(location);
+    if (location !== from) registry.removePinned(from);
+    await savePinnedLocations(registry.getPinnedLocations());
+    res.json(info);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/devices/pinned', async (req, res) => {
+  const removed = registry.removePinned(req.query.location);
   if (!removed) return res.status(404).json({ error: 'Pinned device not found' });
   await savePinnedLocations(registry.getPinnedLocations());
   res.json({ ok: true });
@@ -255,13 +272,12 @@ wss.on('connection', (socket) => {
 async function main() {
   volumeLimits = await loadVolumeLimits();
 
-  const pinnedLocations = await loadPinnedLocations();
-  for (const location of pinnedLocations) {
-    try {
-      await registry.addPinned(location);
-    } catch (err) {
-      console.warn(`Failed to load pinned device ${location}: ${err.message}`);
-    }
+  // Not awaited: an asleep device shouldn't hold up startup, and it'll
+  // appear via the update broadcast once it answers.
+  for (const location of await loadPinnedLocations()) {
+    registry.addPinned(location, { keepIfOffline: true }).catch((err) => {
+      console.warn(`Pinned device ${location} is offline, will retry: ${err.message}`);
+    });
   }
 
   registry.start();

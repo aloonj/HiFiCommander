@@ -1,4 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PinnedDevices } from '@/components/PinnedDevices';
 import { ThemePicker } from '@/components/ThemePicker';
 
 export function DeviceHeader({ devices, serverUdn, rendererUdn, onServerChange, onRendererChange }) {
@@ -39,7 +40,10 @@ export function DeviceHeader({ devices, serverUdn, rendererUdn, onServerChange, 
           </Select>
         </div>
 
-        <ThemePicker />
+        <div className="flex items-center">
+          <PinnedDevices />
+          <ThemePicker />
+        </div>
       </div>
     </div>
   );
