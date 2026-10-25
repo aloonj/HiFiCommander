@@ -20,6 +20,7 @@ import { DevicePicker } from '@/components/DevicePicker';
 import { Thumb } from '@/components/Thumb';
 import { formatSeconds, parseDuration, secondsToRelTime } from '@/lib/time';
 import { formatLabel } from '@/lib/audioFormat';
+import { SignalNote } from '@/components/SignalNote';
 import { cn } from '@/lib/utils';
 
 function VolumeCapPopover({ maxVolume, onChange }) {
@@ -316,6 +317,12 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
             <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
               {playerPicker()}
               {formatLabel(track?.res) && <span>· {formatLabel(track.res)}</span>}
+              <SignalNote
+                rendererUdn={rendererUdn}
+                rendererName={renderer?.friendlyName}
+                track={track}
+                isPlaying={isPlaying}
+              />
             </div>
           </div>
 
@@ -372,6 +379,13 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
               <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                 {playerPicker('min-w-0', 'top')}
                 {formatLabel(track?.res) && <span className="shrink-0">· {formatLabel(track.res)}</span>}
+                <SignalNote
+                  rendererUdn={rendererUdn}
+                  rendererName={renderer?.friendlyName}
+                  track={track}
+                  isPlaying={isPlaying}
+                  className="hidden sm:inline"
+                />
               </div>
             </div>
           </div>

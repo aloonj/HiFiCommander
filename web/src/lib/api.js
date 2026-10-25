@@ -35,6 +35,7 @@ export const api = {
   resume: (rendererUdn) => request('POST', `/api/queue/${rendererUdn}/resume`),
   seek: (rendererUdn, relTime) => request('POST', `/api/queue/${rendererUdn}/seek`, { relTime }),
 
+  getSignal: (rendererUdn) => request('GET', `/api/renderers/${rendererUdn}/signal`),
   getVolume: (rendererUdn) => request('GET', `/api/renderers/${rendererUdn}/volume`),
   setVolume: (rendererUdn, volume) => request('POST', `/api/renderers/${rendererUdn}/volume`, { volume }),
   setMute: (rendererUdn, muted) => request('POST', `/api/renderers/${rendererUdn}/mute`, { muted }),
