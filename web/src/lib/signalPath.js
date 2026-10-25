@@ -64,6 +64,6 @@ export function describeSignal({ rendererUdn, rendererName, res, signal, browser
   if (!codec.lossless) return null;
   return {
     label: 'lossless',
-    detail: `The original ${codec.name} file is sent to ${rendererName}, which decodes it itself. What happens inside the device can't be checked from here.`,
+    detail: `The original ${codec.name} file is sent to ${rendererName}, which decodes it itself. What happens inside the device can't be checked from here; flat tone settings help keep it untouched.`,
   };
 }
