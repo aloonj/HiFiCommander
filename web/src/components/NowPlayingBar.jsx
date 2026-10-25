@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { DevicePicker } from '@/components/DevicePicker';
 import { Thumb } from '@/components/Thumb';
 import { formatSeconds, parseDuration, secondsToRelTime } from '@/lib/time';
+import { formatLabel } from '@/lib/audioFormat';
 import { cn } from '@/lib/utils';
 
 function VolumeCapPopover({ maxVolume, onChange }) {
@@ -306,7 +307,10 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
             <div className="text-2xl font-semibold">{track?.title}</div>
             <div className="text-muted-foreground">{track?.artist}</div>
             {track?.album && <div className="text-sm text-muted-foreground mt-1">{track.album}</div>}
-            <div className="mt-3 flex justify-center">{playerPicker('text-sm')}</div>
+            <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+              {playerPicker()}
+              {formatLabel(track?.res) && <span>· {formatLabel(track.res)}</span>}
+            </div>
           </div>
 
           <div className="w-full max-w-md">{seekBar}</div>
@@ -359,7 +363,10 @@ export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, 
                 </div>
                 {track && <ChevronUp className="size-3.5 text-muted-foreground shrink-0 hidden sm:block" />}
               </button>
-              {playerPicker('text-xs max-w-full', 'top')}
+              <div className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                {playerPicker('min-w-0', 'top')}
+                {formatLabel(track?.res) && <span className="shrink-0">· {formatLabel(track.res)}</span>}
+              </div>
             </div>
           </div>
 

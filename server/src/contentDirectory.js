@@ -29,6 +29,10 @@ function textOf(value) {
   return String(value);
 }
 
+function numberAttr(value) {
+  return value !== undefined ? Number(value) : undefined;
+}
+
 function parseContainer(node) {
   return {
     type: 'container',
@@ -60,7 +64,12 @@ function parseItem(node) {
           uri: textOf(res),
           protocolInfo: res['@_protocolInfo'],
           duration: res['@_duration'],
-          size: res['@_size'] !== undefined ? Number(res['@_size']) : undefined,
+          size: numberAttr(res['@_size']),
+          sampleRate: numberAttr(res['@_sampleFrequency']),
+          bitsPerSample: numberAttr(res['@_bitsPerSample']),
+          channels: numberAttr(res['@_nrAudioChannels']),
+          // UPnP's bitrate attribute is bytes per second, not bits.
+          bitrate: res['@_bitrate'] !== undefined ? Number(res['@_bitrate']) * 8 : undefined,
         }
       : undefined,
   };

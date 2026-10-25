@@ -16,6 +16,7 @@ import { DevicePicker } from '@/components/DevicePicker';
 import { Thumb } from '@/components/Thumb';
 import { api } from '@/lib/api';
 import { formatSeconds, parseDuration } from '@/lib/time';
+import { formatLabel } from '@/lib/audioFormat';
 import { cn } from '@/lib/utils';
 
 // Below this, a folder is easy enough to scan without a filter UI.
@@ -263,6 +264,11 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
                   <div className="truncate">{item.title}</div>
                   {item.artist && <div className="text-xs text-muted-foreground truncate">{item.artist}</div>}
                 </div>
+                {formatLabel(item.res) && (
+                  <span className="hidden sm:inline text-xs text-muted-foreground shrink-0 tabular-nums">
+                    {formatLabel(item.res)}
+                  </span>
+                )}
                 {item.res?.duration && (
                   <span className="text-xs text-muted-foreground shrink-0">
                     {formatSeconds(parseDuration(item.res.duration))}
