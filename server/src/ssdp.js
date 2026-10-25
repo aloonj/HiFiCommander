@@ -73,6 +73,7 @@ export class DeviceRegistry extends EventEmitter {
     // Kept separately from devices so a pinned device that's switched off
     // stays pinned (and saved) and gets retried, rather than being forgotten.
     this.pinned = new Map(); // location -> { udn, error }
+    this.scan = { scanning: false, lastScanAt: null };
     this._createClient();
   }
 
@@ -80,12 +81,12 @@ export class DeviceRegistry extends EventEmitter {
   // firewall rule that allows inbound UDP/1900 from the LAN.
   _createClient() {
     this.client = new Client({ sourcePort: 1900 });
-    this.client.on('response', (headers) => this._handleResponse(headers));
+    this.client.on('response', (headers) => this._handleResponse(headers, 'ssdp'));
     // Some devices don't answer M-SEARCH but do broadcast NOTIFY ssdp:alive
     // on their own (e.g. right after waking from a low-power network state) -
     // node-ssdp parses these separately from search responses, so both need
     // wiring up to actually see them.
-    this.client.on('advertise-alive', (headers) => this._handleResponse(headers));
+    this.client.on('advertise-alive', (headers) => this._handleResponse(headers, 'announce'));
     this.client.on('advertise-bye', (headers) => this._handleBye(headers));
   }
 
@@ -132,7 +133,8 @@ export class DeviceRegistry extends EventEmitter {
       const changed = entry.udn !== info.udn || entry.error !== null || !this.devices.has(info.udn);
       entry.udn = info.udn;
       entry.error = null;
-      this.devices.set(info.udn, { info, kind, lastSeen: Date.now(), pinned: true, location });
+      const source = this.devices.get(info.udn)?.source ?? 'manual';
+      this.devices.set(info.udn, { info, kind, lastSeen: Date.now(), pinned: true, location, source });
       if (changed) this.emit('update', this.getDevices());
       return { udn: info.udn, friendlyName: info.friendlyName, kind };
     } catch (err) {
@@ -179,7 +181,23 @@ export class DeviceRegistry extends EventEmitter {
     this.client.stop();
   }
 
+  // Triggers an immediate search round; "scanning" covers the window in
+  // which replies (MX: 3) and probes are still arriving.
+  rescan() {
+    clearInterval(this._searchTimer);
+    this._search();
+    this._searchTimer = setInterval(() => this._search(), SEARCH_INTERVAL_MS);
+  }
+
   _search() {
+    this.scan = { scanning: true, lastScanAt: Date.now() };
+    this.emit('update', this.getDevices());
+    this.emit('search');
+    clearTimeout(this._scanDoneTimer);
+    this._scanDoneTimer = setTimeout(() => {
+      this.scan = { ...this.scan, scanning: false };
+      this.emit('update', this.getDevices());
+    }, 5000);
     this._ensureClientReady();
     this._refreshAllPinned();
     // search() returns a promise only while the client hasn't started yet
@@ -190,23 +208,83 @@ export class DeviceRegistry extends EventEmitter {
     Promise.resolve(this.client.search(MEDIA_RENDERER_TYPE)).catch(() => {});
   }
 
-  async _handleResponse(headers) {
+  async _handleResponse(headers, source) {
     const location = headers.LOCATION;
     if (!location) return;
-
-    try {
-      const info = await fetchDeviceDescription(location);
-      const kind = classify(info);
-      if (!kind) return;
-
-      const existing = this.devices.get(info.udn);
-      this.devices.set(info.udn, { info, kind, lastSeen: Date.now(), pinned: existing?.pinned ?? false, location });
-      if (!existing) {
-        this.emit('update', this.getDevices());
-      }
-    } catch {
+    await this.registerLocation(location, source).catch(() => {
       // ignore devices we can't fetch/parse
+    });
+  }
+
+  // Common entry point for every discovery method: fetches the description
+  // and adds or refreshes the device. Resolves to the entry, or null when the
+  // URL is a UPnP device but not a media server/renderer.
+  async registerLocation(location, source) {
+    const info = await fetchDeviceDescription(location);
+    const kind = classify(info);
+    if (!kind) return null;
+
+    const existing = this.devices.get(info.udn);
+    const entry = {
+      info,
+      kind,
+      lastSeen: Date.now(),
+      pinned: existing?.pinned ?? false,
+      location,
+      // Keep how it was first found; a moved device reports its new route.
+      source: existing && existing.location === location ? existing.source : source,
+    };
+    this.devices.set(info.udn, entry);
+    if (!existing || existing.location !== location) {
+      this._movePinsTo(info.udn, location);
+      this.emit('found', entry);
+      this.emit('update', this.getDevices());
+    } else if (existing.offline) {
+      this.emit('update', this.getDevices());
     }
+    return entry;
+  }
+
+  // A pinned device that turns up at a new address (e.g. DHCP gave it a new
+  // IP) has its pin moved along with it, rather than left pointing at nothing.
+  _movePinsTo(udn, location) {
+    let moved = false;
+    for (const [oldLocation, pin] of [...this.pinned]) {
+      if (pin.udn !== udn || oldLocation === location) continue;
+      this.pinned.delete(oldLocation);
+      if (!this.pinned.has(location)) this.pinned.set(location, { udn, error: null });
+      moved = true;
+    }
+    if (moved) {
+      const device = this.devices.get(udn);
+      if (device) device.pinned = true;
+      this.emit('pins-changed', this.getPinnedLocations());
+    }
+  }
+
+  _setOffline(entry, offline) {
+    if (!!entry.offline === offline) return;
+    entry.offline = offline;
+    this.emit('update', this.getDevices());
+  }
+
+  forget(udn) {
+    let removed = this.devices.delete(udn);
+    for (const [location, pin] of [...this.pinned]) {
+      if (pin.udn !== udn) continue;
+      this.pinned.delete(location);
+      removed = true;
+      this.emit('pins-changed', this.getPinnedLocations());
+    }
+    if (removed) this.emit('update', this.getDevices());
+    return removed;
+  }
+
+  hasHost(host) {
+    for (const { location } of this.devices.values()) {
+      if (new URL(location).hostname === host) return true;
+    }
+    return false;
   }
 
   _handleBye(headers) {
@@ -222,8 +300,21 @@ export class DeviceRegistry extends EventEmitter {
   _pruneStale() {
     const now = Date.now();
     let changed = false;
+    // Devices found by probing or mDNS never send SSDP replies to refresh
+    // lastSeen, so check on quiet ones directly before they'd go stale.
+    for (const entry of this.devices.values()) {
+      if (entry.pinned || now - entry.lastSeen < SEARCH_INTERVAL_MS * 2) continue;
+      fetchDeviceDescription(entry.location)
+        .then(() => {
+          entry.lastSeen = Date.now();
+          this._setOffline(entry, false);
+        })
+        .catch(() => this._setOffline(entry, true));
+    }
     for (const [udn, entry] of this.devices) {
-      if (!entry.pinned && now - entry.lastSeen > STALE_MS) {
+      // Remembered devices stay listed (as offline) so a stereo in standby
+      // doesn't vanish from the picker; they're removed only via forget().
+      if (!entry.pinned && !this.keepListed?.(udn) && now - entry.lastSeen > STALE_MS) {
         this.devices.delete(udn);
         changed = true;
       }
@@ -234,13 +325,17 @@ export class DeviceRegistry extends EventEmitter {
   getDevices() {
     const servers = [];
     const renderers = [];
-    for (const { info, kind, pinned } of this.devices.values()) {
+    const offlinePins = new Set([...this.pinned.values()].filter((p) => p.error).map((p) => p.udn));
+    for (const { info, kind, pinned, location, source, offline } of this.devices.values()) {
       const summary = {
         udn: info.udn,
         friendlyName: info.friendlyName,
         manufacturer: info.manufacturer,
         modelName: info.modelName,
         pinned,
+        address: new URL(location).hostname,
+        source,
+        online: !offline && !offlinePins.has(info.udn),
       };
       if (kind === 'server') servers.push(summary);
       else renderers.push(summary);
@@ -256,7 +351,7 @@ export class DeviceRegistry extends EventEmitter {
         error,
       };
     });
-    return { servers, renderers, pinned };
+    return { servers, renderers, pinned, missing: this.getMissingKnown?.() ?? [], scan: this.scan };
   }
 
   getDevice(udn) {

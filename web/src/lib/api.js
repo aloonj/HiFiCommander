@@ -13,6 +13,8 @@ async function request(method, url, body) {
 
 export const api = {
   getDevices: () => request('GET', '/api/devices'),
+  rescanDevices: () => request('POST', '/api/devices/rescan'),
+  forgetDevice: (udn) => request('DELETE', `/api/devices/known/${encodeURIComponent(udn)}`),
   addPinnedDevice: (location) => request('POST', '/api/devices/pinned', { location }),
   updatePinnedDevice: (from, location) => request('PUT', '/api/devices/pinned', { from, location }),
   removePinnedDevice: (location) => request('DELETE', `/api/devices/pinned?location=${encodeURIComponent(location)}`),

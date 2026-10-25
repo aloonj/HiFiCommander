@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 
 import { DeviceRegistry } from './ssdp.js';
+import { ExtraDiscovery } from './discovery.js';
 import { QueueManager } from './queueManager.js';
 import { browse } from './contentDirectory.js';
 import { pause, play, seek } from './avTransport.js';
@@ -18,6 +19,7 @@ const PORT = process.env.PORT || 3000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const registry = new DeviceRegistry();
+const extraDiscovery = new ExtraDiscovery(registry);
 const queueManager = new QueueManager(registry);
 const discordPresence = new DiscordPresence(process.env.DISCORD_CLIENT_ID);
 let volumeLimits = {}; // rendererUdn -> max volume (1-100)
@@ -36,6 +38,17 @@ function requireDevice(kindGetter) {
 
 app.get('/api/devices', (req, res) => {
   res.json(registry.getDevices());
+});
+
+app.post('/api/devices/rescan', (req, res) => {
+  extraDiscovery.rescan();
+  registry.rescan();
+  res.json({ ok: true });
+});
+
+app.delete('/api/devices/known/:udn', (req, res) => {
+  if (!extraDiscovery.forget(req.params.udn)) return res.status(404).json({ error: 'Device not found' });
+  res.json({ ok: true });
 });
 
 app.post('/api/devices/pinned', async (req, res) => {
@@ -280,6 +293,8 @@ async function main() {
     });
   }
 
+  registry.on('pins-changed', (locations) => savePinnedLocations(locations).catch(() => {}));
+  await extraDiscovery.start();
   registry.start();
   queueManager.start();
   discordPresence.start();
