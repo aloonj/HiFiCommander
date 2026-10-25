@@ -41,7 +41,10 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
-    minWidth: 380,
+    // Below this the layout drops to its stacked phone form, which doesn't
+    // suit a desktop window; the web UI still handles small screens.
+    minWidth: 820,
+    minHeight: 540,
     title: 'HiFiCommander',
     icon,
     autoHideMenuBar: true,

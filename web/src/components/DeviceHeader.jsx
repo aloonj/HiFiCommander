@@ -11,7 +11,7 @@ const MANAGE = '__manage__';
 function DeviceSelect({ value, onChange, items, placeholder, onManage }) {
   return (
     <Select value={value} onValueChange={(v) => (v === MANAGE ? onManage() : onChange(v))}>
-      <SelectTrigger size="sm" className="w-32 sm:w-52">
+      <SelectTrigger size="sm" className="w-32 sm:w-44 lg:w-52">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -19,7 +19,8 @@ function DeviceSelect({ value, onChange, items, placeholder, onManage }) {
           <SelectItem key={d.udn} value={d.udn}>
             <StatusDot online={d.online !== false} />
             <span className="truncate">{d.friendlyName}</span>
-            <DeviceTag device={d} />
+            {/* On narrow screens the closed select only has room for the name. */}
+            <DeviceTag device={d} className="max-sm:in-data-[slot=select-trigger]:hidden" />
           </SelectItem>
         ))}
         <SelectSeparator />
@@ -37,11 +38,11 @@ export function DeviceHeader({ devices, serverUdn, rendererUdn, onServerChange, 
 
   return (
     <div className="flex items-center gap-2 px-4 py-3 border-b shrink-0">
-      <h1 className="font-semibold text-sm shrink-0">HiFiCommander</h1>
+      <h1 className="font-semibold text-sm shrink-0 hidden sm:block">HiFiCommander</h1>
 
       <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-4 ml-auto">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground hidden sm:inline">Library</span>
+          <span className="text-xs text-muted-foreground hidden md:inline">Library</span>
           <DeviceSelect
             value={serverUdn}
             onChange={onServerChange}
@@ -52,7 +53,7 @@ export function DeviceHeader({ devices, serverUdn, rendererUdn, onServerChange, 
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground hidden sm:inline">Playing on</span>
+          <span className="text-xs text-muted-foreground hidden md:inline">Playing on</span>
           <DeviceSelect
             value={rendererUdn}
             onChange={onRendererChange}
