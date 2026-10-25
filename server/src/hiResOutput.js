@@ -5,6 +5,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import { DATA_DIR } from './dataDir.js';
 
 const run = promisify(execFile);
 const CARD_POLL_MS = 3000;
@@ -51,12 +52,13 @@ class MpvDriver {
     this.pending = new Map();
     this.nextId = 1;
     this.mixer = undefined; // ALSA hardware volume control name, null if none
+    this.demoVolume = 60;
   }
 
   async _ensure() {
     if (this.socket && !this.socket.destroyed) return;
     await rm(this.socketPath, { force: true });
-    const device = this.card.test ? [] : [`--audio-device=alsa/hw:CARD=${this.card.id}`, '--audio-exclusive=yes'];
+    const device = [`--audio-device=alsa/hw:CARD=${this.card.id}`, '--audio-exclusive=yes'];
     this.proc = spawn(
       'mpv',
       [
@@ -68,7 +70,7 @@ class MpvDriver {
         '--volume-max=100',
         '--replaygain=no',
         `--input-ipc-server=${this.socketPath}`,
-        ...(this.card.test ? ['--ao=null'] : device),
+        ...(this.card.demo ? ['--ao=null'] : device),
       ],
       { stdio: 'ignore' }
     );
@@ -131,6 +133,7 @@ class MpvDriver {
   }
 
   async playTrack(track) {
+    this.track = track;
     await this._command('loadfile', track.res.uri, 'replace');
     await this._command('set_property', 'pause', false);
     this.props.idle = false;
@@ -166,7 +169,7 @@ class MpvDriver {
   // leaves the digital signal untouched. Without one it stays at 100.
   async _findMixer() {
     if (this.mixer !== undefined) return this.mixer;
-    if (this.card.test) return (this.mixer = null);
+    if (this.card.demo) return (this.mixer = 'demo');
     const { stdout } = await run('amixer', ['-c', String(this.card.index), 'scontents']).catch(() => ({ stdout: '' }));
     const control = stdout
       .split(/^Simple mixer control /m)
@@ -182,13 +185,15 @@ class MpvDriver {
   async getVolume() {
     const mixer = await this._findMixer();
     if (!mixer) return 100;
+    if (this.card.demo) return this.demoVolume;
     const { stdout } = await run('amixer', ['-c', String(this.card.index), 'sget', mixer]);
     return Number(stdout.match(/\[(\d+)%\]/)?.[1] ?? 100);
   }
 
   async setVolume(volume) {
     const mixer = await this._findMixer();
-    if (mixer) await run('amixer', ['-c', String(this.card.index), 'sset', mixer, `${volume}%`]);
+    if (this.card.demo) this.demoVolume = volume;
+    else if (mixer) await run('amixer', ['-c', String(this.card.index), 'sset', mixer, `${volume}%`]);
   }
 
   async getMute() {
@@ -197,12 +202,24 @@ class MpvDriver {
 
   async setMute(muted) {
     const mixer = await this._findMixer();
-    if (mixer) await run('amixer', ['-c', String(this.card.index), 'sset', mixer, muted ? 'mute' : 'unmute']).catch(() => {});
+    if (mixer && !this.card.demo) await run('amixer', ['-c', String(this.card.index), 'sset', mixer, muted ? 'mute' : 'unmute']).catch(() => {});
   }
 
   async signal() {
-    if (this.card.test) return null;
+    if (this.card.demo) return this._demoSignal();
     return hwParams(this.card.index);
+  }
+
+  // The demo DAC acts like one that accepts anything up to 24-bit/192kHz.
+  _demoSignal() {
+    if (!this.socket || this.props.idle || !this.track) return null;
+    const res = this.track.res ?? {};
+    const bits = res.bitsPerSample ?? 16;
+    return {
+      rate: Math.min(res.sampleRate ?? 44100, 192000),
+      format: bits <= 16 ? 'S16_LE' : 'S24_3LE',
+      channels: res.channels ?? 2,
+    };
   }
 
   dispose() {
@@ -212,7 +229,8 @@ class MpvDriver {
 }
 
 // Watches for USB audio devices and offers each as a "DAC" renderer while
-// it's plugged in. HIFI_HIRES_TEST=1 adds a silent test output.
+// it's plugged in. A silent demo DAC can be added for trying the UI without
+// hardware: set "demoDac" to a name in settings.json, or HIFI_DEMO_DAC.
 export class HiResOutputs extends EventEmitter {
   constructor() {
     super();
@@ -220,6 +238,9 @@ export class HiResOutputs extends EventEmitter {
   }
 
   async start() {
+    const settings = await readFile(path.join(DATA_DIR, 'settings.json'), 'utf-8').then(JSON.parse).catch(() => ({}));
+    const demo = process.env.HIFI_DEMO_DAC || settings.demoDac;
+    this.demoName = demo ? (typeof demo === 'string' && demo !== '1' ? demo : 'Demo DAC') : null;
     const hasMpv = await run('mpv', ['--version']).then(() => true, () => false);
     if (!hasMpv) {
       console.warn('mpv not found; hi-res output disabled');
@@ -231,7 +252,7 @@ export class HiResOutputs extends EventEmitter {
 
   async _poll() {
     const cards = await usbCards();
-    if (process.env.HIFI_HIRES_TEST) cards.push({ index: -1, id: 'test', name: 'Hi-Res Test (silent)', test: true });
+    if (this.demoName) cards.push({ index: -1, id: 'demo', name: this.demoName, demo: true });
     const ids = new Set(cards.map((c) => c.id));
     let changed = false;
     for (const card of cards) {
