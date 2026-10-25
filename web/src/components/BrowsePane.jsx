@@ -39,6 +39,9 @@ function LibraryPicker({ servers, serverUdn, onServerChange, onManageDevices, ch
 
 export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices, path, onNavigate, onPlayTracks, onAddTracks }) {
   const server = servers.find((s) => s.udn === serverUdn);
+  // The local library's contents change under the same folder ids when
+  // folders are added or a scan finishes, so those also trigger a reload.
+  const contentVersion = server?.local ? `${server.folders?.join('|')}:${server.trackCount}` : '';
   const pickerProps = { servers, serverUdn, onServerChange, onManageDevices };
   const folder = path[path.length - 1];
   const [items, setItems] = useState(null);
@@ -66,7 +69,7 @@ export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices
     return () => {
       cancelled = true;
     };
-  }, [serverUdn, folder.id]);
+  }, [serverUdn, folder.id, contentVersion]);
 
   const availableLetters = useMemo(() => new Set((items ?? []).map((item) => firstLetterOf(item.title))), [items]);
 
