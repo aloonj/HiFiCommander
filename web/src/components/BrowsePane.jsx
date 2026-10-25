@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Folder, Music, Play, Plus, ListMusic, Search, X, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { ChevronDown, Folder, Music, Play, Plus, ListMusic, Search, X, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { AlphabetStrip, firstLetterOf } from '@/components/AlphabetStrip';
+import { DevicePicker } from '@/components/DevicePicker';
 import { Thumb } from '@/components/Thumb';
 import { api } from '@/lib/api';
 import { formatSeconds, parseDuration } from '@/lib/time';
@@ -21,7 +22,23 @@ import { cn } from '@/lib/utils';
 const LONG_LIST_THRESHOLD = 20;
 const VIEW_STORAGE_KEY = 'nodedlna-view';
 
-export function BrowsePane({ serverUdn, path, onNavigate, onPlayTracks, onAddTracks }) {
+function LibraryPicker({ servers, serverUdn, onServerChange, onManageDevices, children }) {
+  return (
+    <DevicePicker
+      devices={servers}
+      selectedUdn={serverUdn}
+      onSelect={onServerChange}
+      onManage={onManageDevices}
+      emptyText="No libraries found yet"
+    >
+      {children}
+    </DevicePicker>
+  );
+}
+
+export function BrowsePane({ serverUdn, servers, onServerChange, onManageDevices, path, onNavigate, onPlayTracks, onAddTracks }) {
+  const server = servers.find((s) => s.udn === serverUdn);
+  const pickerProps = { servers, serverUdn, onServerChange, onManageDevices };
   const folder = path[path.length - 1];
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
@@ -66,7 +83,16 @@ export function BrowsePane({ serverUdn, path, onNavigate, onPlayTracks, onAddTra
   const showFilters = (items?.length ?? 0) > LONG_LIST_THRESHOLD;
 
   if (!serverUdn) {
-    return <div className="flex-1 flex items-center justify-center text-muted-foreground">No media server connected</div>;
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+        No library connected
+        <LibraryPicker {...pickerProps}>
+          <Button size="sm" variant="outline">
+            Choose library <ChevronDown />
+          </Button>
+        </LibraryPicker>
+      </div>
+    );
   }
 
   return (
@@ -78,7 +104,28 @@ export function BrowsePane({ serverUdn, path, onNavigate, onPlayTracks, onAddTra
               <div key={crumb.id} className="flex items-center gap-1.5">
                 {i > 0 && <BreadcrumbSeparator />}
                 <BreadcrumbItem>
-                  {i === path.length - 1 ? (
+                  {i === 0 ? (
+                    // The root crumb is the library itself: its name goes
+                    // home, the chevron switches library.
+                    <span className="flex items-center gap-0.5">
+                      {path.length === 1 ? (
+                        <BreadcrumbPage>{server?.friendlyName ?? crumb.title}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <button onClick={() => onNavigate(path.slice(0, 1))}>{server?.friendlyName ?? crumb.title}</button>
+                        </BreadcrumbLink>
+                      )}
+                      <LibraryPicker {...pickerProps}>
+                        <button
+                          type="button"
+                          className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          title="Switch library"
+                        >
+                          <ChevronDown className="size-3.5" />
+                        </button>
+                      </LibraryPicker>
+                    </span>
+                  ) : i === path.length - 1 ? (
                     <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink asChild>

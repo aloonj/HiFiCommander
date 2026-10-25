@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { StatusDot } from '@/components/DeviceTag';
 import { api } from '@/lib/api';
 
 // Last-resort manual entries by UPnP description URL, for a device that
@@ -85,12 +84,10 @@ export function PinnedDevicesEditor({ pinned, onChange }) {
                 </form>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span title={p.online ? 'Online' : `Offline${p.error ? ` (${p.error})` : ''}`}>
-                    <StatusDot online={p.online} />
-                  </span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm">
+                    <div className="truncate text-sm" title={p.error ?? undefined}>
                       {p.friendlyName ?? <span className="text-muted-foreground">Not reachable</span>}
+                      {p.friendlyName && !p.online && <span className="text-muted-foreground"> · offline</span>}
                     </div>
                     <div className="truncate font-mono text-xs text-muted-foreground" title={p.location}>
                       {p.location}

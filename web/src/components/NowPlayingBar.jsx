@@ -1,10 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronUp, Pause, Play, Repeat, Settings2, SkipBack, SkipForward, Square, Volume2, VolumeX, X } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Pause,
+  Play,
+  Repeat,
+  Settings2,
+  SkipBack,
+  SkipForward,
+  Square,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DevicePicker } from '@/components/DevicePicker';
 import { Thumb } from '@/components/Thumb';
 import { formatSeconds, parseDuration, secondsToRelTime } from '@/lib/time';
+import { cn } from '@/lib/utils';
 
 function VolumeCapPopover({ maxVolume, onChange }) {
   const [draft, setDraft] = useState(maxVolume ?? 100);
@@ -103,8 +118,31 @@ function AdjacentTrack({ track, label, onClick }) {
   );
 }
 
-export function NowPlayingBar({ rendererUdn, controller, queueState }) {
+export function NowPlayingBar({ rendererUdn, controller, queueState, renderers, onRendererChange, onManageDevices }) {
   const track = queueState?.tracks?.[queueState.currentIndex];
+  const renderer = renderers.find((r) => r.udn === rendererUdn);
+
+  // "on <player>" doubles as the player switcher, Spotify Connect style.
+  function playerPicker(className, side) {
+    return (
+      <DevicePicker
+        devices={renderers}
+        selectedUdn={rendererUdn}
+        onSelect={onRendererChange}
+        onManage={onManageDevices}
+        emptyText="No players found"
+        side={side}
+      >
+        <button
+          type="button"
+          className={cn('flex min-w-0 items-center gap-0.5 text-muted-foreground hover:text-foreground', className)}
+        >
+          <span className="truncate">on {renderer?.friendlyName ?? 'no player'}</span>
+          <ChevronDown className="size-3 shrink-0" />
+        </button>
+      </DevicePicker>
+    );
+  }
   const prevTrack = queueState?.tracks?.[queueState.currentIndex - 1];
   const nextTrack = queueState?.tracks?.[queueState.currentIndex + 1];
   const transportState = queueState?.transportState;
@@ -268,6 +306,7 @@ export function NowPlayingBar({ rendererUdn, controller, queueState }) {
             <div className="text-2xl font-semibold">{track?.title}</div>
             <div className="text-muted-foreground">{track?.artist}</div>
             {track?.album && <div className="text-sm text-muted-foreground mt-1">{track.album}</div>}
+            <div className="mt-3 flex justify-center">{playerPicker('text-sm')}</div>
           </div>
 
           <div className="w-full max-w-md">{seekBar}</div>
@@ -293,22 +332,36 @@ export function NowPlayingBar({ rendererUdn, controller, queueState }) {
         />
 
         <div className="px-4 py-3 flex items-center gap-3 sm:gap-4">
-          <button
-            className="w-auto sm:w-56 min-w-0 shrink sm:shrink-0 flex items-center gap-3 text-left disabled:cursor-default"
-            disabled={!track}
-            onClick={() => track && setExpanded(true)}
-          >
-            <Thumb src={track?.albumArtURI} className="size-10 rounded shrink-0" />
-            {track ? (
-              <div className="min-w-0">
-                <div className="truncate font-medium text-sm">{track.title}</div>
-                <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">Nothing playing</div>
-            )}
-            {track && <ChevronUp className="size-3.5 text-muted-foreground shrink-0 ml-auto hidden sm:block" />}
-          </button>
+          <div className="w-auto sm:w-56 min-w-0 shrink sm:shrink-0 flex items-center gap-3">
+            <button
+              className="shrink-0 disabled:cursor-default"
+              disabled={!track}
+              onClick={() => setExpanded(true)}
+              aria-label="Expand now playing"
+            >
+              <Thumb src={track?.albumArtURI} className="size-11 rounded" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <button
+                className="flex w-full min-w-0 items-center gap-1 text-left disabled:cursor-default"
+                disabled={!track}
+                onClick={() => setExpanded(true)}
+              >
+                <div className="min-w-0 flex-1">
+                  {track ? (
+                    <>
+                      <div className="truncate font-medium text-sm">{track.title}</div>
+                      <div className="truncate text-xs text-muted-foreground">{track.artist}</div>
+                    </>
+                  ) : (
+                    <div className="truncate text-sm text-muted-foreground">Nothing playing</div>
+                  )}
+                </div>
+                {track && <ChevronUp className="size-3.5 text-muted-foreground shrink-0 hidden sm:block" />}
+              </button>
+              {playerPicker('text-xs max-w-full', 'top')}
+            </div>
+          </div>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <TransportControls controller={controller} track={track} isPlaying={isPlaying} repeat={queueState?.repeat} />

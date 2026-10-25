@@ -3,6 +3,7 @@ import { DeviceHeader } from '@/components/DeviceHeader';
 import { BrowsePane } from '@/components/BrowsePane';
 import { QueuePanel } from '@/components/QueuePanel';
 import { NowPlayingBar } from '@/components/NowPlayingBar';
+import { DevicesSheet } from '@/components/DevicesSheet';
 import { useDlnaSocket } from '@/lib/useDlnaSocket';
 import { useLocalPlayer } from '@/lib/useLocalPlayer';
 import { createRemoteController } from '@/lib/rendererController';
@@ -15,6 +16,7 @@ export default function App() {
   const [serverUdn, setServerUdn] = useState(null);
   const [rendererUdn, setRendererUdn] = useState(LOCAL_RENDERER_UDN);
   const [path, setPath] = useState([ROOT]);
+  const [managing, setManaging] = useState(false);
   const localPlayer = useLocalPlayer();
   const isLocal = rendererUdn === LOCAL_RENDERER_UDN;
   const rendererDevices = [LOCAL_RENDERER_DEVICE, ...devices.renderers];
@@ -112,17 +114,14 @@ export default function App() {
     <div className="h-screen flex flex-col">
       <audio ref={localPlayer.audioRef} className="hidden" />
 
-      <DeviceHeader
-        devices={{ servers: devices.servers, renderers: rendererDevices }}
-        serverUdn={serverUdn}
-        rendererUdn={rendererUdn}
-        onServerChange={changeServer}
-        onRendererChange={changeRenderer}
-      />
+      <DeviceHeader onManageDevices={() => setManaging(true)} />
 
       <div className="flex-1 flex flex-col md:flex-row min-h-0">
         <BrowsePane
           serverUdn={serverUdn}
+          servers={devices.servers}
+          onServerChange={changeServer}
+          onManageDevices={() => setManaging(true)}
           path={path}
           onNavigate={navigate}
           onPlayTracks={playTracks}
@@ -131,7 +130,24 @@ export default function App() {
         <QueuePanel queueState={queueState} onJump={(index) => controller?.jump(index)} />
       </div>
 
-      <NowPlayingBar rendererUdn={rendererUdn} controller={controller} queueState={queueState} />
+      <NowPlayingBar
+        rendererUdn={rendererUdn}
+        controller={controller}
+        queueState={queueState}
+        renderers={rendererDevices}
+        onRendererChange={changeRenderer}
+        onManageDevices={() => setManaging(true)}
+      />
+
+      <DevicesSheet
+        open={managing}
+        onOpenChange={setManaging}
+        devices={{ servers: devices.servers, renderers: rendererDevices }}
+        serverUdn={serverUdn}
+        rendererUdn={rendererUdn}
+        onServerChange={changeServer}
+        onRendererChange={changeRenderer}
+      />
     </div>
   );
 }

@@ -14,11 +14,3 @@ export function DeviceTag({ device, className }) {
     </Badge>
   );
 }
-
-export function StatusDot({ online, className }) {
-  return (
-    <span
-      className={cn('size-2 shrink-0 rounded-full', online ? 'bg-green-500' : 'bg-muted-foreground/40', className)}
-    />
-  );
-}

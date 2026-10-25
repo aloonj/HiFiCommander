@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, ChevronRight, Loader2, RefreshCw, X } from 'lucide-react';
+import { Check, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { DeviceTag, StatusDot } from '@/components/DeviceTag';
+import { DeviceTag } from '@/components/DeviceTag';
 import { PinnedDevicesEditor } from '@/components/PinnedDevices';
 import { api } from '@/lib/api';
 import { SOURCE_LABELS } from '@/lib/deviceTags';
@@ -22,14 +22,10 @@ function useIsWide() {
   return wide;
 }
 
-function timeAgo(timestamp, now) {
-  const seconds = Math.max(0, Math.round((now - timestamp) / 1000));
-  return seconds < 60 ? `${seconds}s ago` : `${Math.round(seconds / 60)}m ago`;
-}
-
 function DeviceRow({ device, selected, onSelect, onForget }) {
   const online = device.online !== false;
-  const detail = [device.address, SOURCE_LABELS[device.source]].filter(Boolean).join(' · ');
+  // How it was found only matters when troubleshooting, so it's a tooltip.
+  const howFound = SOURCE_LABELS[device.source];
   return (
     <li className="group flex items-center gap-1">
       <button
@@ -42,18 +38,18 @@ function DeviceRow({ device, selected, onSelect, onForget }) {
           selected && 'bg-muted hover:bg-muted'
         )}
       >
-        <StatusDot online={online} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <span className={cn('truncate', !online && 'text-muted-foreground')}>{device.friendlyName}</span>
             <DeviceTag device={device} />
           </div>
-          <div className="truncate text-xs text-muted-foreground">
-            {!online && 'Offline · '}
-            {detail || 'This computer'}
-          </div>
+          {(device.address || !online) && (
+            <div className="truncate text-xs text-muted-foreground" title={howFound}>
+              {[device.address, !online && 'offline'].filter(Boolean).join(' · ')}
+            </div>
+          )}
         </div>
-        {selected && <Check className="size-4 shrink-0 text-primary" aria-label="Selected" />}
+        {selected && <Check className="size-4 shrink-0" aria-label="Selected" />}
       </button>
       {onForget && (
         <Button
@@ -81,33 +77,37 @@ function Section({ title, children }) {
 
 // Managing devices (seeing what was found and how, rescanning, forgetting,
 // manual URLs) is occasional, so it lives in a sheet rather than taking
-// space from the queue; quick switching stays in the header selects.
+// space from the queue; quick switching is done from the browse path and the
+// now playing bar.
 export function DevicesSheet({ open, onOpenChange, devices, serverUdn, rendererUdn, onServerChange, onRendererChange }) {
   const wide = useIsWide();
-  const [extra, setExtra] = useState({ pinned: [], missing: [], scan: null });
+  const [extra, setExtra] = useState({ pinned: [], missing: [] });
   const [showManual, setShowManual] = useState(false);
-  const [now, setNow] = useState(Date.now());
+  const [searching, setSearching] = useState(false);
 
   const refresh = useCallback(() => {
     api
       .getDevices()
-      .then((d) => setExtra({ pinned: d.pinned ?? [], missing: d.missing ?? [], scan: d.scan ?? null }))
+      .then((d) => setExtra({ pinned: d.pinned ?? [], missing: d.missing ?? [] }))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!open) return;
     refresh();
-    const timer = setInterval(() => {
-      refresh();
-      setNow(Date.now());
-    }, POLL_MS);
+    const timer = setInterval(refresh, POLL_MS);
     return () => clearInterval(timer);
   }, [open, refresh]);
 
+  // Background searches every 30s aren't shown; only a search you asked for
+  // reports progress, for the few seconds replies take to arrive.
   async function rescan() {
+    setSearching(true);
     await api.rescanDevices().catch(() => {});
-    refresh();
+    setTimeout(() => {
+      setSearching(false);
+      refresh();
+    }, 4000);
   }
 
   async function forget(udn) {
@@ -126,30 +126,17 @@ export function DevicesSheet({ open, onOpenChange, devices, serverUdn, rendererU
         />
       ));
 
-  const scanning = extra.scan?.scanning;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={wide ? 'right' : 'bottom'}
         className={cn('gap-0', wide ? 'w-96 sm:max-w-96' : 'max-h-[85vh]')}
       >
-        <SheetHeader className="pr-12">
+        <SheetHeader className="flex-row items-center gap-3 pr-12">
           <SheetTitle>Devices</SheetTitle>
-          <SheetDescription className="flex items-center gap-1.5 text-xs">
-            {scanning ? (
-              <>
-                <Loader2 className="size-3 animate-spin" /> Searching…
-              </>
-            ) : extra.scan?.lastScanAt ? (
-              `Last search ${timeAgo(extra.scan.lastScanAt, now)} · repeats every 30s`
-            ) : (
-              'Found automatically on your network'
-            )}
-          </SheetDescription>
-          <Button size="sm" variant="outline" className="mt-2 w-fit" onClick={rescan} disabled={scanning}>
-            <RefreshCw className={cn('size-3.5', scanning && 'animate-spin')} />
-            Search now
+          <SheetDescription className="sr-only">Players and libraries found on your network</SheetDescription>
+          <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={rescan} disabled={searching}>
+            {searching ? 'Searching…' : 'Search again'}
           </Button>
         </SheetHeader>
 
